@@ -141,6 +141,7 @@ def week(
             raise Refused(404, "That title is not on the current list.")
         item = found[1]
         live = client.tagged()
+        allow.reconcile(db, library, live)  # every tap this read shows gone, not only this title's
         mine = settle(db, library, item_id, live)
         if mine and not mine["confirmed"]:
             raise Refused(
@@ -194,7 +195,9 @@ def allow_list(db: DB, client: TagClient, library: str, item_id: int, action: st
     if not client.configured:
         raise Refused(503, "The service for this library is not configured.")
     with LOCK:
-        has = item_id in client.tagged().get(TAG_KEEP, frozenset())
+        live = client.tagged()
+        allow.reconcile(db, library, live)
+        has = item_id in live.get(TAG_KEEP, frozenset())
         if action == "add":
             if has:
                 allow.set_tags(db, library, item_id, TAG_KEEP, True)

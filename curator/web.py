@@ -712,14 +712,12 @@ def create_app(
                 for t in json.loads(r["tags"]):
                     if t in ("keep", "keep-review", TAG_KEEP, TAG_DELETE):
                         held[t] = held.get(t, 0) + 1
-            tags_live, error = None, ""
-            if clients[lib].configured:
-                try:
-                    tags_live = {k: len(v) for k, v in live(lib).items()}
-                except ArrError as exc:
-                    error = str(exc)
-            else:
+            now_tags = live_or_none(lib)  # fresh, and reconciles taps under the lock
+            tags_live = {k: len(v) for k, v in now_tags.items()} if now_tags is not None else None
+            if not clients[lib].configured:
                 error = f"{SERVICE[lib]} is not configured"
+            else:
+                error = "" if now_tags is not None else f"{SERVICE[lib]} could not be read"
             libs.append(
                 {
                     "library": lib,

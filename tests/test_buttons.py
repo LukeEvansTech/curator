@@ -290,15 +290,22 @@ def test_a_refused_write_is_a_plain_failure(env, monkeypatch):
 
 
 def test_any_fresh_read_that_sees_the_tag_gone_ends_undo(env):
+    from conftest import token_of
+
     db, client, film = setup(env)
     client.post("/allow/refresh")  # the title page reads live tags for titles in the library
-    for observe in ("/allow", "/title/film/101", "refresh"):
+    for observe in ("/allow", "/title/film/101", "refresh", "/ops", "press"):
         db.run("DELETE FROM taps")
         film.tags["cleanup-keep"][1].discard(101)
         assert press(client, 101, "keep").status_code == 303
+        token = token_of(client, "film")  # a page already open, drawn while the tag was there
         film.tags["cleanup-keep"][1].discard(101)  # removed in Radarr
         if observe == "refresh":
             client.post("/allow/refresh")
+        elif observe == "press":  # pressing another title reads every tag
+            film.tags["cleanup-keep"][1].discard(103)
+            db.run("DELETE FROM taps WHERE item_id = 103")
+            assert press(client, 103, "keep", token=token).status_code == 303
         else:
             client.get(observe)
         film.tags["cleanup-keep"][1].add(101)  # added back in Radarr
