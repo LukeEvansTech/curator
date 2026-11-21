@@ -136,3 +136,16 @@ def test_a_pending_keep_confirmed_later_joins_the_allow_list(env):
     film.tags["cleanup-keep"][1].add(101)  # it lands
     client.get("/")  # a page load confirms it
     assert "Mega Gator vs. Lava Bear" in client.get("/allow").text
+
+
+def test_allow_list_shows_live_decision_tags_without_a_full_refresh(env):
+    _, client, film, _ = refreshed(env)
+    film.ignore.add(303)
+    r = client.post("/allow/act", data={"library": "film", "id": "303", "action": "add"})
+    assert r.status_code == 502  # taken, not seen
+    assert "Grandma" not in client.get("/allow").text
+    film.ignore.clear()
+    film.tags["cleanup-keep"][1].add(303)  # it lands
+    assert "Grandma" in client.get("/allow").text  # a reload shows it, no refresh needed
+    film.tags["cleanup-keep"][1].discard(304)  # removed in Radarr
+    assert "Fog Over Fenwick" not in client.get("/allow").text

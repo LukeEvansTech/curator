@@ -154,7 +154,13 @@ def week(
         if action == "undo":
             if not mine:
                 raise Refused(409, "There is nothing of this app's to undo on that title.")
-            client.remove(item_id, mine["tag"])
+            try:
+                client.remove(item_id, mine["tag"])
+            except Unconfirmed:
+                # Sent but not seen to go: give up ownership, so a tag somebody adds back later
+                # can never be taken for this app's and removed by another Undo.
+                close_tap(db, mine["id"], "undo sent, not confirmed by the service")
+                raise
             close_tap(db, mine["id"], "undone")
             allow.set_tags(db, library, item_id, mine["tag"], False)
             return Done("Undone.", True)

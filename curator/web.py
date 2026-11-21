@@ -406,6 +406,21 @@ def create_app(
 
     tpl.env.globals["card_state"] = card_state
 
+    def live_or_none(library: str) -> dict[str, frozenset[int]] | None:
+        try:
+            # fresh: one tag read per library per page, and a reload must show a change at once
+            return live(library, fresh=True) if clients[library].configured else None
+        except ArrError:
+            return None
+
+    def overlay(row: dict, tags: dict[str, frozenset[int]] | None) -> dict:
+        """A cached title with the two decision tags as the service holds them now, so a change
+        made since the last full read (here or elsewhere) shows on the next page load."""
+        if tags is not None:
+            held = set(row["tags"]) - {TAG_KEEP, TAG_DELETE}
+            row["tags"] = sorted(held | {t for t in (TAG_KEEP, TAG_DELETE) if row["id"] in tags[t]})
+        return row
+
     @app.get("/", response_class=HTMLResponse)
     def week(request: Request):
         return page(request, "week.html", nav="week", views=[week_view(lib) for lib in LIBRARIES])
@@ -514,7 +529,7 @@ def create_app(
         c = db.one("SELECT * FROM catalogue WHERE library = ? AND id = ?", library, item_id)
         if not t and not c:
             raise HTTPException(404, "title not found")
-        cat = allow.decode(c) if c else None
+        cat = overlay(allow.decode(c), live_or_none(library)) if c else None
         latest = db.latest(library)
         on_list = find(latest[1], item_id) if latest else None
         return page(
@@ -561,8 +576,9 @@ def create_app(
             esc = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
             args.append(f"%{esc}%")
         rows = []
+        now_tags = {lib_: live_or_none(lib_) for lib_ in LIBRARIES}
         for r in db.all(sql + " ORDER BY title COLLATE NOCASE", *args):
-            row = allow.decode(r)
+            row = overlay(allow.decode(r), now_tags[r["library"]])
             row["why"] = allow.reasons(row["library"], row)
             if (everything or row["why"]) and (not why or why in row["why"]):
                 rows.append(row)

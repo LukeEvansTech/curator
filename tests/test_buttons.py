@@ -244,3 +244,12 @@ def test_a_page_drawn_while_a_press_holds_the_lock_never_closes_a_tap(env):
     assert db.one("SELECT undone_at FROM taps")["undone_at"] is None
     film.tags["cleanup-keep"][1].add(101)  # the press's tag, as it really stands
     assert press(client, 101, "undo").status_code == 303
+
+
+def test_an_unconfirmed_undo_gives_up_ownership(env):
+    db, client, film = setup(env)
+    assert press(client, 101, "keep").status_code == 303
+    film.ignore.add(101)  # the removal is acknowledged but never shows
+    assert press(client, 101, "undo").status_code == 502
+    assert db.one("SELECT undo_note FROM taps")["undo_note"].startswith("undo sent")
+    assert press(client, 101, "undo").status_code == 409  # whatever tag is there is not ours now
