@@ -1,9 +1,10 @@
 """The buttons: the only writes this app makes outside its own database.
 
-This week (/): Keep adds cleanup-keep, Delete instead adds cleanup-eligible, Undo removes the tag
-that button added. Only for ids in the latest document, only the actions it offers for that id, and
-undo only for a tag the taps table says this app added. Allow list (/allow): add or remove
-cleanup-keep on a title the services listed. Nothing else, and never the `keep` tag.
+This week (/): Keep (labelled Keep forever on a title the judge keeps for a year) adds cleanup-keep,
+Delete instead adds cleanup-eligible, Undo removes the tag that button added. Only for ids in the
+latest document, only the actions it offers for that id, and undo only for a tag the taps table says
+this app added. Allow list (/allow): add or remove cleanup-keep on a title the services listed.
+Nothing else, and never the `keep` tag.
 """
 
 from __future__ import annotations

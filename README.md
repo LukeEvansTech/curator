@@ -1,16 +1,17 @@
 # curator
 
 Review pages for a weekly Radarr and Sonarr library cleanup. An engine plans, an LLM judge proposes
-keep or delete with a reason, and an executor acts after a one-week review window. Curator keeps
-every run and verdict the engines publish, shows what goes at the next run, and lets a person
-overrule the judge with one tap.
+keep or delete with a reason, and an executor acts after a one-week review window. A title the
+judge keeps is held for a year and then judged again; only a person (Keep forever) or the rating bar
+keeps a title for good. Curator keeps every run and verdict the engines publish, shows what goes at
+the next run, and lets a person overrule the judge with one tap.
 
 ## How it works
 
 ```text
 engine report step ─▶ POST /publish/{film|tv}   signed JSON review document (version 1 or 2)
                    ─▶ kept as received, then read into runs, titles, verdicts and actions
-This week (/)      ─▶ Keep adds cleanup-keep, Delete instead adds cleanup-eligible, Undo removes it
+This week (/)      ─▶ Keep, Keep forever: cleanup-keep; Delete instead: cleanup-eligible; Undo removes it
 Allow list         ─▶ read from Radarr and Sonarr every 6 hours; add or remove cleanup-keep
 next weekly run    ─▶ the engine's plan reads the tags
 ```
@@ -25,15 +26,15 @@ next weekly run    ─▶ the engine's plan reads the tags
 
 ## Pages
 
-| Page                            | Shows                                                                        |
-| ------------------------------- | ---------------------------------------------------------------------------- |
-| `/`                             | Per library: totals, Going, Needs you, Later, Being kept, Deleted last run   |
-| `/runs`, `/run/{library}/{run}` | Every run: counts, plan funnel, judge batches, tokens and cost, digest, JSON |
-| `/title/{library}/{id}`         | One title: facts, every verdict, what was done, button presses, service link |
-| `/allow`                        | Protected titles and why (rating bar, `keep`, `cleanup-keep`), searchable    |
-| `/deleted`                      | What went, largest first, and what a restore needs                           |
-| `/ops`                          | Last document per library, refused publishes, tags in the services, refresh  |
-| `/health`, `/metrics`           | Liveness; `curator_last_document_timestamp_seconds{library}` and more        |
+| Page                            | Shows                                                                                 |
+| ------------------------------- | ------------------------------------------------------------------------------------- |
+| `/`                             | Per library: totals, Going, Needs you, Later, Being kept for a year, Deleted last run |
+| `/runs`, `/run/{library}/{run}` | Every run: counts, plan funnel, judge batches, tokens and cost, digest, JSON          |
+| `/title/{library}/{id}`         | One title: facts, every verdict, what was done, button presses, service link          |
+| `/allow`                        | Protected titles and why (rating bar, `keep`, `cleanup-keep`), searchable             |
+| `/deleted`                      | What went, largest first, and what a restore needs                                    |
+| `/ops`                          | Last document per library, refused publishes, tags in the services, refresh           |
+| `/health`, `/metrics`           | Liveness; `curator_last_document_timestamp_seconds{library}` and more                 |
 
 ## Run it
 

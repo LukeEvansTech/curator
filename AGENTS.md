@@ -7,7 +7,8 @@ it; this file holds what the code does not say.
   `report` step POSTs a signed review document per library to `/publish/{library}`; this app keeps
   every one and draws the pages from them. The contract is the engine's `review.py` (`build`,
   `sign`, `publish`); `document.py` here is the validating side. Version 2 adds an optional
-  `summary`; every field in it stays optional.
+  `summary`; every field in it stays optional. A `kept` entry may offer `keep` as well as
+  `delete`: the judge keeps for a year, so its Keep is labelled Keep forever.
 - Layout: `document.py` (validation, pure), `ingest.py` (document into tables), `buttons.py` (the
   only tag writes), `arr.py` (the only network code), `allow.py` (allow list), `web.py` and
   `templates/` (pages), `db.py` (schema).

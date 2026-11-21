@@ -119,7 +119,7 @@ def _record(c: sqlite3.Connection, library: str, doc_id: int, doc: dict) -> None
 
     for section in d.SECTIONS:
         for item in doc[section]:
-            _title(c, library, doc_id, at, item)
+            _title(c, library, doc_id, at, item, partial=section == "deleted")
             if section == "deleted":
                 c.execute(
                     "INSERT OR IGNORE INTO actions (library, item_id, kind, title, year, size_gb,"
@@ -140,34 +140,45 @@ def _record(c: sqlite3.Connection, library: str, doc_id: int, doc: dict) -> None
                 _verdict(c, library, key, at, section, item)
 
 
-def _title(c: sqlite3.Connection, library: str, doc_id: int, at: str, item: dict) -> None:
+TITLE_FACTS = (
+    "title",
+    "year",
+    "size_gb",
+    "imdb_score",
+    "imdb_votes",
+    "plays",
+    "finished_by",
+    "origin",
+    "requested_by",
+    "overview",
+)
+
+
+def _fact(name: str, partial: bool) -> str:
+    """How an upsert sets one stored fact. A deletion entry is partial: it carries identity, title,
+    year and size, so a fact it leaves blank keeps what an earlier entry stored."""
+    if not partial:
+        return f"{name} = excluded.{name}"
+    if name == "title":  # a missing title is filled in as "#<id>" by validation
+        return (
+            "title = CASE WHEN excluded.title = '#' || excluded.id"
+            " THEN titles.title ELSE excluded.title END"
+        )
+    return f"{name} = COALESCE(NULLIF(excluded.{name}, ''), titles.{name})"
+
+
+def _title(
+    c: sqlite3.Connection, library: str, doc_id: int, at: str, item: dict, partial: bool = False
+) -> None:
+    cols = ", ".join(TITLE_FACTS)
+    marks = ", ".join("?" for _ in TITLE_FACTS)
+    updates = ", ".join(_fact(name, partial) for name in TITLE_FACTS)
     c.execute(
-        "INSERT INTO titles (library, id, title, year, size_gb, imdb_score, imdb_votes, plays,"
-        " finished_by, origin, requested_by, overview, first_seen, last_seen, document_id)"
-        " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-        " ON CONFLICT(library, id) DO UPDATE SET title = excluded.title, year = excluded.year,"
-        " size_gb = excluded.size_gb, imdb_score = excluded.imdb_score,"
-        " imdb_votes = excluded.imdb_votes, plays = excluded.plays,"
-        " finished_by = excluded.finished_by, origin = excluded.origin,"
-        " requested_by = excluded.requested_by, overview = excluded.overview,"
+        f"INSERT INTO titles (library, id, {cols}, first_seen, last_seen, document_id)"  # nosec B608
+        f" VALUES (?, ?, {marks}, ?, ?, ?)"
+        f" ON CONFLICT(library, id) DO UPDATE SET {updates},"
         " last_seen = excluded.last_seen, document_id = excluded.document_id",
-        (
-            library,
-            item["id"],
-            item["title"],
-            item["year"],
-            item["size_gb"],
-            item["imdb_score"],
-            item["imdb_votes"],
-            item["plays"],
-            item["finished_by"],
-            item["origin"],
-            item["requested_by"],
-            item["overview"],
-            at,
-            at,
-            doc_id,
-        ),
+        (library, item["id"], *(item[name] for name in TITLE_FACTS), at, at, doc_id),
     )
 
 

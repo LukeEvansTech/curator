@@ -32,7 +32,7 @@ is the source of truth for values.
 - **Totals**: ruled grid of counts; the going count in amber.
 - **Card**: title and year, a facts line, the reason in a panel with its author, a collapsed
   synopsis, the tag state, then full-width buttons at least 48px tall.
-- **Sections**: Going and Needs you open; Later, Being kept and Deleted collapsed.
+- **Sections**: Going and Needs you open; Later, Being kept for a year and Deleted collapsed.
 - **Facts**: ruled definition grid (uppercase narrow label over value).
 
 ## Rules
