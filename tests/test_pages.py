@@ -163,3 +163,20 @@ def test_deleted_pages_through_everything_and_totals_it_all(env):
     last = client.get("/deleted?page=3").text
     assert "Filler Film 250" in last and "Filler Film 001" not in last
     assert client.get("/deleted?page=99").status_code == 200  # clamped to the last page
+
+
+def test_runs_page_through_the_whole_history(env):
+    _, _, client, *_ = env
+    doc = sample("film-v1")
+    for day in range(1, 61):
+        stamp = f"2026-{9 + (day - 1) // 30:02d}-{(day - 1) % 30 + 1:02d}T08:00:00+00:00"
+        assert (
+            publish(
+                client, "film", {**doc, "generated_at": stamp, "run_id": f"run-{day:03d}"}
+            ).status_code
+            == 200
+        )
+    first = client.get("/runs").text
+    assert "Page 1 of 2 (60 runs)" in first and "run-060" in first and "run-001" not in first
+    second = client.get("/runs?page=2").text
+    assert "run-001" in second and "run-060" not in second

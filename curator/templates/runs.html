@@ -26,6 +26,13 @@
   </li>
   {% endfor %}
 </ul>
+{% if pages > 1 %}
+<p class="meta">Page {{ page_no }} of {{ pages }} ({{ count }} runs).</p>
+<div class="btns">
+  {% if page_no > 1 %}<a class="button" href="/runs?{{ {'library': library, 'page': page_no - 1} | urlencode }}">Newer</a>{% endif %}
+  {% if page_no < pages %}<a class="button" href="/runs?{{ {'library': library, 'page': page_no + 1} | urlencode }}">Older</a>{% endif %}
+</div>
+{% endif %}
 {% else %}
 <div class="empty"><p>No run has published a document yet.</p></div>
 {% endif %}

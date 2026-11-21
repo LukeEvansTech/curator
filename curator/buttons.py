@@ -71,12 +71,14 @@ def settle(db: DB, library: str, item_id: int, live: dict[str, frozenset[int]], 
         if item_id not in live.get(tap["tag"], frozenset()):
             # Seen gone: whatever tag appears later is not this app's to undo.
             close_tap(db, tap["id"], "tag removed outside this app")
+            allow.set_tags(db, library, item_id, tap["tag"], False)
             return None
         return tap
     at = moment(tap["at"])
     fresh = at is not None and dt.datetime.now(dt.timezone.utc) - at <= PENDING_GRACE
     if fresh and item_id in live.get(tap["tag"], frozenset()):
         db.run("UPDATE taps SET confirmed = 1 WHERE id = ?", tap["id"])
+        allow.set_tags(db, library, item_id, tap["tag"], True)  # as an immediate success does
         return open_tap(db, library, item_id, page)
     if not fresh:
         close_tap(db, tap["id"], "never confirmed by the service")

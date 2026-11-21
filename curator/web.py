@@ -43,6 +43,7 @@ SHOWN_JUDGE = {name for names in JUDGE_FIELDS.values() for name in names}
 LIVE_TTL = 10.0  # seconds a read of the live tags serves a page before it is read again
 ALLOW_PAGE = 300  # rows the allow list shows at once
 DELETED_PAGE = 100  # rows a page of /deleted shows
+RUNS_PAGE = 50  # runs a page of /runs shows
 POLICY = (
     "default-src 'none'; style-src 'self'; font-src 'self'; img-src 'self'; "
     "form-action 'self'; base-uri 'none'; frame-ancestors 'none'"
@@ -435,14 +436,29 @@ def create_app(
 
     # --- runs ---
     @app.get("/runs", response_class=HTMLResponse)
-    def runs(request: Request, library: str = ""):
+    def runs(request: Request, library: str = "", page_no: int = Query(1, alias="page")):
         lib = library if library in LIBRARIES else ""
+        count = db.count("SELECT count(*) FROM runs WHERE (? = '' OR library = ?)", lib, lib)
+        pages = max(1, -(-count // RUNS_PAGE))
+        page_no = min(max(page_no, 1), pages)
         rows = db.all(
-            "SELECT * FROM runs WHERE (? = '' OR library = ?) ORDER BY generated_at DESC LIMIT 200",
+            "SELECT * FROM runs WHERE (? = '' OR library = ?)"
+            " ORDER BY generated_at DESC, library LIMIT ? OFFSET ?",
             lib,
             lib,
+            RUNS_PAGE,
+            (page_no - 1) * RUNS_PAGE,
         )
-        return page(request, "runs.html", nav="runs", runs=rows, library=lib)
+        return page(
+            request,
+            "runs.html",
+            nav="runs",
+            runs=rows,
+            library=lib,
+            count=count,
+            page_no=page_no,
+            pages=pages,
+        )
 
     def run_row(library: str, run_key: str):
         if library not in LIBRARIES:

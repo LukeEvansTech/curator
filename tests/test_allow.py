@@ -124,3 +124,15 @@ def test_refresh_shares_the_lock_with_tag_changes():
     from curator import buttons
 
     assert allow.LOCK is buttons.LOCK
+
+
+def test_a_pending_keep_confirmed_later_joins_the_allow_list(env):
+    _, _, client, film, _ = env
+    publish(client, "film", sample("film-v1"))
+    client.post("/allow/refresh")
+    film.ignore.add(101)
+    assert press(client, 101, "keep").status_code == 502
+    film.ignore.clear()
+    film.tags["cleanup-keep"][1].add(101)  # it lands
+    client.get("/")  # a page load confirms it
+    assert "Mega Gator vs. Lava Bear" in client.get("/allow").text
