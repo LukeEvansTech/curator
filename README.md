@@ -25,15 +25,15 @@ next weekly run    ─▶ the engine's plan reads the tags
 
 ## Pages
 
-| Page                            | Shows                                                                         |
-| ------------------------------- | ----------------------------------------------------------------------------- |
-| `/`                             | Per library: totals, Going, Needs you, Later, Being kept, Deleted last run    |
-| `/runs`, `/run/{library}/{run}` | Every run: counts, plan funnel, judge batches, tokens and cost, digest, JSON  |
-| `/title/{library}/{id}`         | One title: facts, every verdict, what was done, button presses, service link  |
-| `/allow`                        | Protected titles and why (rating bar, `keep`, `cleanup-keep`), searchable     |
-| `/deleted`                      | What went, largest first, and what a restore needs                            |
-| `/ops`                          | Last document per library, refused publishes, tags in the services, refresh   |
-| `/health`, `/metrics`           | Liveness; `curator_last_document_timestamp_seconds{library}` and more         |
+| Page                            | Shows                                                                        |
+| ------------------------------- | ---------------------------------------------------------------------------- |
+| `/`                             | Per library: totals, Going, Needs you, Later, Being kept, Deleted last run   |
+| `/runs`, `/run/{library}/{run}` | Every run: counts, plan funnel, judge batches, tokens and cost, digest, JSON |
+| `/title/{library}/{id}`         | One title: facts, every verdict, what was done, button presses, service link |
+| `/allow`                        | Protected titles and why (rating bar, `keep`, `cleanup-keep`), searchable    |
+| `/deleted`                      | What went, largest first, and what a restore needs                           |
+| `/ops`                          | Last document per library, refused publishes, tags in the services, refresh  |
+| `/health`, `/metrics`           | Liveness; `curator_last_document_timestamp_seconds{library}` and more        |
 
 ## Run it
 

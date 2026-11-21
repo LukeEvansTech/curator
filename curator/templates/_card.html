@@ -1,7 +1,7 @@
 {# One title on This week. `v` is the library's view, `item` the entry, `section` its list. #}
 {% set st = card_state(v, item, section) %}
 <li class="card" id="{{ v.library }}-{{ item.id }}">
-  <h3><a href="/title/{{ v.library }}/{{ item.id }}">{{ item.title }}</a>{% if item.year %} <span class="year">({{ item.year }})</span>{% endif %}</h3>
+  <h3><a class="t" href="/title/{{ v.library }}/{{ item.id }}">{{ item.title }}</a>{% if item.year %} <span class="year">({{ item.year }})</span>{% endif %}</h3>
   {% set line = item | facts %}{% if line %}<p class="line">{{ line }}</p>{% endif %}
   {% if section == 'later' and item.due_at %}<p class="line">Due {{ item.due_at | day }}</p>{% endif %}
   {% if item.reason %}<p class="reason">{% if byline.get(item.by) %}<span class="who">{{ byline.get(item.by) }}:</span> {% endif %}{{ item.reason }}</p>{% endif %}

@@ -319,7 +319,7 @@ details[open] > summary.rule-head::after {
   margin: 0 0 2px;
 }
 
-.card h3 a {
+.card .t {
   text-decoration: none;
 }
 
@@ -521,7 +521,10 @@ select {
 pre.digest {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  font: 14px/1.5 ui-monospace, menlo, monospace;
+  font:
+    14px/1.5 ui-monospace,
+    menlo,
+    monospace;
   border: 1px solid var(--rule);
   padding: 12px;
   margin: 0;

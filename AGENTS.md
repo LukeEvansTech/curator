@@ -22,8 +22,8 @@ it; this file holds what the code does not say.
 - **Only two tags, only through the services' APIs.** `arr.TagClient` refuses any label but
   `cleanup-keep` and `cleanup-eligible`. Never add a write path that deletes, touches `keep`, or
   writes to the engines' state. The tags are the decision; the next plan reads them.
-- **A This week button acts only on the latest document.** Only ids it lists, only the `actions`
-  it offers for that id, and only with a form token drawn from that document.
+- **A This week button acts only on the latest document.** Only IDs it lists, only the `actions`
+  it offers for that ID, and only with a form token drawn from that document.
 - **Undo removes only what this app added.** A tap is recorded after the service confirms the tag
   (read back, since the editor endpoint acknowledges before acting). A tag already set elsewhere
   is left alone and never becomes undoable.
