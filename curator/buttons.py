@@ -8,6 +8,7 @@ cleanup-keep on a title the services listed. Nothing else, and never the `keep` 
 
 from __future__ import annotations
 
+import datetime as dt
 import hashlib
 import hmac
 from dataclasses import dataclass
@@ -15,10 +16,13 @@ from dataclasses import dataclass
 from . import allow
 from .arr import TAG_DELETE, TAG_KEEP, TagClient, Unconfirmed
 from .db import DB
-from .document import find
+from .document import find, moment
 from .ingest import LOCK
 
 TAG_FOR = {"keep": TAG_KEEP, "delete": TAG_DELETE}
+# An add the service took but had not shown is this app's only if the tag appears within this
+# long of the press; after that the tag could as well be somebody else's, so it is never undone.
+PENDING_GRACE = dt.timedelta(minutes=2)
 
 
 class Refused(Exception):
@@ -55,6 +59,25 @@ def open_tap(db: DB, library: str, item_id: int, page: str = "week"):
     )
 
 
+def settle(db: DB, library: str, item_id: int, live: dict[str, frozenset[int]], page: str = "week"):
+    """The open tap on a title, with a pending add confirmed or given up as the tags now show.
+
+    Returns None when there is none; a tap whose `confirmed` is still 0 is waiting.
+    """
+    tap = open_tap(db, library, item_id, page)
+    if tap is None or tap["confirmed"]:
+        return tap
+    at = moment(tap["at"])
+    fresh = at is not None and dt.datetime.now(dt.timezone.utc) - at <= PENDING_GRACE
+    if fresh and item_id in live.get(tap["tag"], frozenset()):
+        db.run("UPDATE taps SET confirmed = 1 WHERE id = ?", tap["id"])
+        return open_tap(db, library, item_id, page)
+    if not fresh:
+        close_tap(db, tap["id"], "never confirmed by the service")
+        return None
+    return tap
+
+
 def close_tap(db: DB, tap_id: int, note: str) -> None:
     db.run(
         "UPDATE taps SET undone_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), undo_note = ?"
@@ -65,17 +88,26 @@ def close_tap(db: DB, tap_id: int, note: str) -> None:
 
 
 def _record(
-    db: DB, library: str, item_id: int, page: str, action: str, tag: str, added: bool, doc_id
+    db: DB,
+    library: str,
+    item_id: int,
+    page: str,
+    action: str,
+    tag: str,
+    added: bool,
+    doc_id,
+    confirmed: bool = True,
 ):
     db.run(
-        "INSERT INTO taps (library, item_id, page, action, tag, added, document_id)"
-        " VALUES (?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO taps (library, item_id, page, action, tag, added, confirmed, document_id)"
+        " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
         library,
         item_id,
         page,
         action,
         tag,
         int(added),
+        int(confirmed),
         doc_id,
     )
 
@@ -101,7 +133,11 @@ def week(
             raise Refused(404, "That title is not on the current list.")
         item = found[1]
         live = client.tagged()
-        mine = open_tap(db, library, item_id)
+        mine = settle(db, library, item_id, live)
+        if mine and not mine["confirmed"]:
+            raise Refused(
+                409, "Still waiting for the service to show the last change. Try again in a minute."
+            )
         if mine and item_id not in live.get(mine["tag"], frozenset()):
             # The tag this app added has been taken off elsewhere: nothing is left to undo.
             close_tap(db, mine["id"], "tag removed outside this app")
@@ -126,9 +162,8 @@ def week(
         try:
             client.add(item_id, tag)
         except Unconfirmed:
-            # The service took this app's change but had not shown it yet: it is still this
-            # app's to undo once it lands (an undo first checks the tag is there).
-            _record(db, library, item_id, "week", action, tag, True, doc_id)
+            # Taken but not shown yet: pending, and this app's only if it lands soon (settle).
+            _record(db, library, item_id, "week", action, tag, True, doc_id, confirmed=False)
             raise
         # Recorded once the tag is confirmed, so undo never removes a tag this app did not add.
         _record(db, library, item_id, "week", action, tag, True, doc_id)

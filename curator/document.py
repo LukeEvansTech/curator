@@ -152,11 +152,26 @@ def _flat(group: dict, prefix: str = "", depth: int = 0) -> dict[str, Any]:
     return out
 
 
+def _digest(value: Any) -> dict[str, str]:
+    """The digest as sent: the engines' `{title, message, text}`, or plain text."""
+    if isinstance(value, str):
+        value = {"text": value}
+    if not isinstance(value, dict):
+        return {}
+    out = {}
+    for name, limit in (("title", SUMMARY_TEXT), ("message", SUMMARY_TEXT), ("text", DIGEST_TEXT)):
+        v = value.get(name)
+        if isinstance(v, str) and v.strip():
+            out[name] = v.strip()[:limit]
+    return out
+
+
 def summary(raw: Any) -> dict[str, Any]:
     """Version 2's optional summary, kept as far as it is readable.
 
-    `digest` is the run's digest text. Every other key holds either one value or a group of
-    values (the plan's funnel counts, the judge's status and totals, the executor's totals).
+    `digest` is the run's digest as sent (title, message, text). Every other key holds one value
+    or a group of values, flattened two levels deep (the plan's funnel, with its `counts`; the
+    judge's status, batches, tokens and model group; the executor's totals).
     """
     if not isinstance(raw, dict):
         return {}
@@ -165,8 +180,9 @@ def summary(raw: Any) -> dict[str, Any]:
         if len(out) >= SUMMARY_KEYS or not isinstance(key, str) or not SUMMARY_KEY.match(key):
             continue
         if key == "digest":
-            if isinstance(value, str) and value.strip():
-                out["digest"] = value.strip()[:DIGEST_TEXT]
+            digest = _digest(value)
+            if digest:
+                out["digest"] = digest
         elif isinstance(value, dict):
             group = _flat(value)
             if group:

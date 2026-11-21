@@ -118,3 +118,9 @@ def test_a_failed_read_keeps_the_last_good_copy_and_says_so(env):
     assert db.one("SELECT count(*) AS n FROM catalogue WHERE library = 'film'")["n"] == 6
     assert "failed: Radarr could not be reached" in client.get("/allow").text
     assert 'curator_allow_refresh_ok{library="film"} 0' in client.get("/metrics").text
+
+
+def test_refresh_shares_the_lock_with_tag_changes():
+    from curator import buttons
+
+    assert allow.LOCK is buttons.LOCK

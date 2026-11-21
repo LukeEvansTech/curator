@@ -28,6 +28,13 @@ def run_key(doc: dict, document_id: int) -> str:
     return doc["run_id"] if RUN_ID.match(doc["run_id"]) else f"doc-{document_id}"
 
 
+def _digest_text(digest: dict) -> str:
+    """The digest as one block: the push title and message, then the full report."""
+    head = "\n".join(digest[k] for k in ("title", "message") if digest.get(k))
+    body = digest.get("text", "")
+    return f"{head}\n\n{body}".strip() if head and body else (head or body)
+
+
 def _gb(items: list[dict]) -> float:
     return round(sum(float(i.get("size_gb") or 0) for i in items), 2)
 
@@ -93,7 +100,7 @@ def _record(c: sqlite3.Connection, library: str, doc_id: int, doc: dict) -> None
         "deleted_n": len(doc["deleted"]),
         "deleted_gb": _gb(doc["deleted"]),
         "summary": json.dumps(summary),
-        "digest": summary.get("digest", ""),
+        "digest": _digest_text(summary.get("digest") or {}),
         "judge_status": j["status"],
         "judge_batches": j["batches"],
         "judge_failed": j["failed"],

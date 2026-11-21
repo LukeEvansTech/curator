@@ -24,6 +24,7 @@ from fastapi.responses import (
 )
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.concurrency import run_in_threadpool
 
 from . import allow, buttons, ingest
 from .arr import TAG_DELETE, TAG_KEEP, ArrError, TagClient, radarr, sonarr
@@ -237,7 +238,8 @@ def create_app(
             return reject(library, 401, "signature missing or wrong", len(raw))
         try:
             doc = normalise(library, json.loads(raw))
-            doc_id, new = ingest.accept(db, library, raw, doc)
+            # in a worker thread: the shared lock can be held across a service call by a press
+            doc_id, new = await run_in_threadpool(ingest.accept, db, library, raw, doc)
         except (json.JSONDecodeError, UnicodeDecodeError, RecursionError):
             return reject(library, 400, "the document is not JSON", len(raw))
         except Invalid as exc:
@@ -322,13 +324,18 @@ def create_app(
             view["live"] = live(library)
         except ArrError as exc:
             view["error"] = str(exc)
-        mine = {}
-        for item in (doc.get(k) or [] for k in ("going", "later", "kept", "needs_you")):
-            for i in item:
-                tap = buttons.open_tap(db, library, i["id"])
-                if tap:
+        mine, pending = {}, set()
+        for items in (doc.get(k) or [] for k in ("going", "later", "kept", "needs_you")):
+            for i in items:
+                if view["live"] is not None:
+                    tap = buttons.settle(db, library, i["id"], view["live"])
+                else:
+                    tap = buttons.open_tap(db, library, i["id"])
+                if tap and not tap["confirmed"]:
+                    pending.add(i["id"])
+                elif tap:
                     mine[i["id"]] = tap["tag"]
-        view["mine"] = mine
+        view["mine"], view["pending"] = mine, pending
         return view
 
     def card_state(view: dict, item: dict, section: str) -> dict:
@@ -338,6 +345,12 @@ def create_app(
         lv = view.get("live")
         has_keep = lv is not None and item["id"] in lv.get(TAG_KEEP, frozenset())
         has_del = lv is not None and item["id"] in lv.get(TAG_DELETE, frozenset())
+        if item["id"] in view["pending"]:
+            return {
+                "note": f"Sent to {SERVICE[view['library']]}; waiting for it to show. Reload in a minute.",
+                "tone": "",
+                "buttons": [],
+            }
         mine = view["mine"].get(item["id"])
         if mine and lv is not None and item["id"] not in lv.get(mine, frozenset()):
             mine = None
@@ -424,7 +437,7 @@ def create_app(
     def run_page(request: Request, library: str, run_key: str):
         row = run_row(library, run_key)
         summary = json.loads(row["summary"])
-        groups = {k: v for k, v in summary.items() if isinstance(v, dict)}
+        groups = {k: v for k, v in summary.items() if isinstance(v, dict) and k != "digest"}
         singles = {k: v for k, v in summary.items() if not isinstance(v, dict) and k != "digest"}
         deleted = db.all(
             "SELECT * FROM actions WHERE library = ? AND run_key = ? ORDER BY size_gb DESC",

@@ -63,7 +63,8 @@ def test_run_page_shows_funnel_judge_cost_and_digest(env):
     _, _, client, *_ = env
     load(client)
     page = client.get("/run/tv/run-20261115T081500-tv0001").text
-    assert "candidates" in page and "98" in page
+    assert "<dt>candidate</dt>" in page and "98" in page and "judge limit" in page
+    assert "1 of 7 batches failed" in page
     assert "184,000" in page and "21,500" in page and "claude-opus" in page
     # 0.184 M in at $4 + 0.0215 M out at $20 = $0.736 + $0.43
     assert "$1.17" in page
@@ -117,7 +118,7 @@ def test_hostile_text_is_escaped_everywhere(env):
     doc["run_id"] = HOSTILE[:90]
     assert publish(client, "film", doc).status_code == 200
     tv = sample("tv-v2")
-    tv["summary"]["digest"] = HOSTILE
+    tv["summary"]["digest"] = {"title": HOSTILE, "message": HOSTILE, "text": HOSTILE}
     tv["summary"]["judge"]["model"] = HOSTILE
     tv["summary"]["plan"] = {"x": HOSTILE}
     assert publish(client, "tv", tv).status_code == 200

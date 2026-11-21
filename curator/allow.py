@@ -8,6 +8,7 @@ import logging
 
 from .arr import TAG_DELETE, ArrError, TagClient
 from .db import DB
+from .ingest import LOCK
 
 log = logging.getLogger(__name__)
 
@@ -53,6 +54,13 @@ def decode(row) -> dict:
 
 def refresh(db: DB, library: str, client: TagClient) -> str:
     """Replace one library's cached copy from its service. Returns a line for /ops."""
+    # Under the lock the buttons hold, so a tag change cannot land between the read and the write
+    # and then be wiped by an older snapshot.
+    with LOCK:
+        return _refresh(db, library, client)
+
+
+def _refresh(db: DB, library: str, client: TagClient) -> str:
     at = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     try:
         titles = client.library()

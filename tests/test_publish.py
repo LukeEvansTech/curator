@@ -33,10 +33,12 @@ def test_v2_summary_is_read_and_optional_fields_survive(env):
     doc = sample("tv-v2")
     assert publish(client, "tv", doc).status_code == 200
     run = db.one("SELECT * FROM runs")
-    assert (run["judge_status"], run["judge_batches"], run["judge_failed"]) == ("ok", 7, 1)
+    assert (run["judge_status"], run["judge_batches"], run["judge_failed"]) == ("partial", 7, 1)
     assert (run["tokens_in"], run["tokens_out"], run["model"]) == (184000, 21500, "claude-opus")
-    assert run["digest"].startswith("TV cleanup, dry run")
-    assert json.loads(run["summary"])["plan"]["candidates"] == 98
+    assert run["digest"].startswith("TV cleanup: 1 would go Sunday\n1 series would go")
+    assert "Open the review page" in run["digest"]
+    stored = json.loads(run["summary"])
+    assert stored["plan"]["counts.candidate"] == 98 and stored["plan"]["offered"] == 30
     # a dry run's deletion is recorded as one it would have made
     assert db.one("SELECT kind FROM actions")["kind"] == "would-delete"
 

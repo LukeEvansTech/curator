@@ -63,7 +63,7 @@ def test_summary_keeps_what_it_can_read():
     }
     out = summary(raw)
     assert out["plan"] == {"titles": 10, "nested.ok": 2}
-    assert out["digest"] == "text" and "count" not in out and "list" not in out
+    assert out["digest"] == {"text": "text"} and "count" not in out and "list" not in out
     assert judge(out) == {
         "status": "partial",
         "batches": None,
@@ -93,3 +93,15 @@ def test_huge_integers_are_dropped_from_a_summary_and_refused_in_a_title():
     doc["going"][0]["size_gb"] = 10**309
     with pytest.raises(Invalid):
         normalise("film", doc)
+
+
+def test_digest_is_the_engines_record_or_plain_text():
+    record = {"title": " T ", "message": "M", "text": "x" * 30000, "extra": 1}
+    assert summary({"digest": record})["digest"] == {
+        "title": "T",
+        "message": "M",
+        "text": "x" * 20000,
+    }
+    assert summary({"digest": "plain"})["digest"] == {"text": "plain"}
+    assert "digest" not in summary({"digest": None})
+    assert "digest" not in summary({"digest": ["no"]})

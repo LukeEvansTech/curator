@@ -127,17 +127,35 @@ def test_a_tag_that_lands_late_is_confirmed_on_a_later_read(env):
     assert db.one("SELECT count(*) AS n FROM taps")["n"] == 1
 
 
-def test_a_tag_never_seen_to_land_is_reported_but_stays_undoable(env):
+def test_an_unconfirmed_add_is_pending_and_undoable_only_if_it_lands_soon(env):
     db, client, film = setup(env)
     film.ignore.add(101)
     r = press(client, 101, "keep")
     assert r.status_code == 502 and "did not land" in r.text
-    # the change was this app's, so if it lands later the tap lets Undo remove it
-    assert db.one("SELECT tag, undone_at FROM taps")["tag"] == "cleanup-keep"
+    tap = db.one("SELECT * FROM taps")
+    assert (tap["tag"], tap["confirmed"], tap["undone_at"]) == ("cleanup-keep", 0, None)
+    # while pending, no Undo and no second press
+    card = client.get("/").text.split('id="film-101"')[1].split("</li>")[0]
+    assert "waiting for it to show" in card and "<form" not in card
+    assert press(client, 101, "undo").status_code == 409
+    # it lands within the grace window: it was this app's change, so Undo may remove it
     film.ignore.clear()
-    film.tags["cleanup-keep"][1].add(101)  # it landed after all
+    film.tags["cleanup-keep"][1].add(101)
     assert press(client, 101, "undo").status_code == 303
     assert 101 not in film.carrying("cleanup-keep")
+
+
+def test_an_unconfirmed_add_never_claims_a_tag_that_appears_later(env):
+    db, client, film = setup(env)
+    film.ignore.add(101)
+    assert press(client, 101, "keep").status_code == 502
+    # the grace window passes with nothing landed, then somebody adds cleanup-keep in Radarr
+    db.run("UPDATE taps SET at = '2026-01-01T00:00:00Z'")
+    film.ignore.clear()
+    film.tags["cleanup-keep"][1].add(101)
+    assert press(client, 101, "undo").status_code == 409
+    assert 101 in film.carrying("cleanup-keep")
+    assert db.one("SELECT undo_note FROM taps")["undo_note"] == "never confirmed by the service"
 
 
 def test_presses_and_publishes_share_one_lock():

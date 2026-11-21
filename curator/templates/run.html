@@ -18,7 +18,7 @@
 
 <h2 class="rule-head">Plan</h2>
 {% if funnel %}
-<dl class="facts">{% for k, v in funnel.items() %}<div><dt>{{ k | replace('_', ' ') }}</dt><dd class="num">{{ v }}</dd></div>{% endfor %}</dl>
+<dl class="facts">{% for k, v in funnel.items() %}<div><dt>{{ k | replace('counts.', '') | replace('_', ' ') }}</dt><dd class="num">{{ v }}</dd></div>{% endfor %}</dl>
 {% else %}<div class="empty"><p>This document carries no plan counts (they arrive with document version 2).</p></div>{% endif %}
 
 <h2 class="rule-head">Judge</h2>

@@ -125,6 +125,8 @@ CREATE TABLE IF NOT EXISTS taps (
     action TEXT NOT NULL,
     tag TEXT NOT NULL,
     added INTEGER NOT NULL,
+    -- 0 while the service has taken the change but not yet shown it; undo needs 1
+    confirmed INTEGER NOT NULL DEFAULT 1,
     document_id INTEGER,
     at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
     undone_at TEXT,
