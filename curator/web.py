@@ -333,6 +333,8 @@ def create_app(
                 view["live"] = live(library, fresh=reconciled)
             except ArrError as exc:
                 view["error"] = str(exc)
+            if reconciled and view["live"] is not None:
+                allow.reconcile(db, library, view["live"])  # off-list titles' taps too
             taps = {}
             for item_id in ids:
                 if reconciled and view["live"] is not None:

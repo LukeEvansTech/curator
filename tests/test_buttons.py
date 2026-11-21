@@ -311,3 +311,33 @@ def test_any_fresh_read_that_sees_the_tag_gone_ends_undo(env):
         film.tags["cleanup-keep"][1].add(101)  # added back in Radarr
         assert press(client, 101, "undo").status_code == 409, observe
         assert 101 in film.carrying("cleanup-keep")
+
+
+def test_a_truncated_reply_to_undo_is_read_back(env, monkeypatch):
+    import http.client
+
+    db, client, film = setup(env)
+    assert press(client, 101, "keep").status_code == 303
+    real_open = film.open
+
+    def truncate_put(request, timeout=None):
+        response = real_open(request, timeout)
+        if request.get_method() == "PUT":
+            raise http.client.IncompleteRead(b"")
+        return response
+
+    monkeypatch.setattr(film, "open", truncate_put)
+    assert press(client, 101, "undo").status_code == 303  # read back: the removal landed
+    assert db.one("SELECT undo_note FROM taps")["undo_note"] == "undone"
+
+
+def test_this_week_closes_taps_on_titles_no_longer_listed(env):
+    db, client, film = setup(env)
+    assert press(client, 101, "keep").status_code == 303
+    later = sample("film-v1")
+    later["generated_at"] = "2026-11-22T08:00:00+00:00"
+    later["going"] = [i for i in later["going"] if i["id"] != 101]
+    assert publish(client, "film", later).status_code == 200
+    film.tags["cleanup-keep"][1].discard(101)
+    client.get("/")
+    assert db.one("SELECT undo_note FROM taps")["undo_note"] == "tag removed outside this app"

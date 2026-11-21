@@ -8,6 +8,7 @@ so no caller can widen what this app is able to write.
 
 from __future__ import annotations
 
+import http.client
 import json
 import time
 import urllib.error
@@ -133,7 +134,8 @@ class TagClient:
         except urllib.error.HTTPError as exc:
             exc.close()  # the error holds the response open and nothing reads its body
             raise Refusal(f"{self.service.name} answered {exc.code} to {method}") from exc
-        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        except (urllib.error.URLError, TimeoutError, OSError, http.client.HTTPException) as exc:
+            # HTTPException covers a truncated reply (IncompleteRead): an answer lost in transit
             raise ArrError(f"{self.service.name} could not be reached") from exc
         try:
             return json.loads(raw) if raw else None
