@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Deleted · curator{% endblock %}
+{% block main %}
+<h1>Deleted</h1>
+<p class="meta">What went and when, largest first. {{ deleted_n }} deleted in all, {{ total | gb }}. A deleted file stays in the {{ service.film }} or {{ service.tv }} recycle bin for {{ recycle_days }} days.</p>
+<form class="filters" method="get" action="/deleted">
+  <label>Library<select name="library"><option value="">Both</option>{% for k, n in names.items() %}<option value="{{ k }}" {{ 'selected' if library == k }}>{{ n }}</option>{% endfor %}</select></label>
+  <label>&nbsp;<button type="submit">Show</button></label>
+</form>
+{% if rows %}
+<ul class="rows">
+  {% for a in rows %}
+  <li>
+    <div class="top-line"><a href="/title/{{ a.library }}/{{ a.item_id }}">{{ a.title }}{% if a.year %} ({{ a.year }}){% endif %}</a><span class="num">{{ a.size_gb | gb }}</span></div>
+    <p class="sub">{{ names[a.library] }} · {{ a.at | when }}{% if a.reason %} · {{ a.reason }}{% endif %}</p>
+    {% if a.kind != 'deleted' %}<p class="sub">Dry run: nothing was deleted.</p>
+    {% elif a.in_bin %}<p class="sub keep-text">In the recycle bin until {{ a.bin_until | day }}. To restore: move the files back from the recycle bin, then re-add {{ a.title }}{% if a.year %} ({{ a.year }}){% endif %} in {{ service[a.library] }} and give it cleanup-keep so the next run leaves it.</p>
+    {% else %}<p class="sub">Past the recycle bin since {{ a.bin_until | day }}: restoring means adding it in {{ service[a.library] }} and downloading it again.</p>{% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% if pages > 1 %}
+<p class="meta">Page {{ page_no }} of {{ pages }} ({{ count }} entries).</p>
+<div class="btns">
+  {% if page_no > 1 %}<a class="button" href="/deleted?{{ {'library': library, 'page': page_no - 1} | urlencode }}">Larger</a>{% endif %}
+  {% if page_no < pages %}<a class="button" href="/deleted?{{ {'library': library, 'page': page_no + 1} | urlencode }}">Smaller</a>{% endif %}
+</div>
+{% endif %}
+{% else %}
+<div class="empty"><p>Nothing has been deleted, or no run has reported a deletion yet.</p></div>
+{% endif %}
+{% endblock %}

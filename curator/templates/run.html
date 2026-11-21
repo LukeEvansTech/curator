@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}{{ names[run.library] }} run · curator{% endblock %}
+{% block main %}
+<h1>{{ names[run.library] }} run, {{ run.generated_at | when }}</h1>
+<p class="meta">{{ run.run_id or 'No run id' }} · document version {{ run.version }}{% if run.documents > 1 %} · published {{ run.documents }} times{% endif %}</p>
+<dl class="facts">
+  <div><dt>Mode</dt><dd>{{ 'Act' if run.mode == 'act' else 'Dry run' }}</dd></div>
+  <div><dt>Received</dt><dd>{{ run.received_at | when }}</dd></div>
+  <div><dt>Next run</dt><dd>{{ run.next_run_at | when }}</dd></div>
+  <div><dt>Cap</dt><dd class="num">{{ run.cap }} a run</dd></div>
+  <div><dt>Going</dt><dd class="num">{{ run.going_n }} · {{ run.going_gb | gb }}</dd></div>
+  <div><dt>Later</dt><dd class="num">{{ run.later_n }}</dd></div>
+  <div><dt>Being kept</dt><dd class="num">{{ run.kept_n }}</dd></div>
+  <div><dt>Needs you</dt><dd class="num">{{ run.needs_n }}</dd></div>
+  <div><dt>{{ 'Deleted' if run.mode == 'act' else 'Would have gone' }}</dt><dd class="num">{{ run.deleted_n }} · {{ run.deleted_gb | gb }}</dd></div>
+</dl>
+{% if blocks %}<div class="banner"><b>Blocked, so nothing was deleted.</b><ul>{% for b in blocks %}<li>{{ b }}</li>{% endfor %}</ul></div>{% endif %}
+
+<h2 class="rule-head">Plan</h2>
+{% if funnel %}
+<dl class="facts">{% for k, v in funnel.items() %}<div><dt>{{ k | replace('counts.', '') | replace('_', ' ') }}</dt><dd class="num">{{ v }}</dd></div>{% endfor %}</dl>
+{% else %}<div class="empty"><p>This document carries no plan counts (they arrive with document version 2).</p></div>{% endif %}
+
+<h2 class="rule-head">Judge</h2>
+{% if judge or run.judge_status or run.model or run.judge_batches is not none or run.judge_failed is not none or run.tokens_in is not none or run.tokens_out is not none %}
+<dl class="facts">
+  {% if run.judge_status %}<div><dt>Status</dt><dd>{{ run.judge_status }}</dd></div>{% endif %}
+  {% if run.model %}<div><dt>Model</dt><dd>{{ run.model }}</dd></div>{% endif %}
+  {% if run.judge_batches is not none %}<div><dt>Batches</dt><dd class="num">{{ run.judge_batches }}</dd></div>{% endif %}
+  {% if run.judge_failed is not none %}<div><dt>Failed batches</dt><dd class="num {{ 'bad-text' if run.judge_failed }}">{{ run.judge_failed }}</dd></div>{% endif %}
+  {% if run.tokens_in is not none %}<div><dt>Tokens in</dt><dd class="num">{{ '{:,}'.format(run.tokens_in) }}</dd></div>{% endif %}
+  {% if run.tokens_out is not none %}<div><dt>Tokens out</dt><dd class="num">{{ '{:,}'.format(run.tokens_out) }}</dd></div>{% endif %}
+  {% if run.tokens_in is not none or run.tokens_out is not none %}<div><dt>Estimated cost</dt><dd class="num">{{ cost(run.tokens_in, run.tokens_out) }}</dd></div>{% endif %}
+  {% for k, v in judge.items() %}<div><dt>{{ k | replace('_', ' ') }}</dt><dd>{{ v }}</dd></div>{% endfor %}
+</dl>
+{% else %}<div class="empty"><p>This document carries no judge figures.</p></div>{% endif %}
+
+<h2 class="rule-head">Executor</h2>
+{% if executor %}
+<dl class="facts">{% for k, v in executor.items() %}<div><dt>{{ k | replace('_', ' ') }}</dt><dd>{{ v }}</dd></div>{% endfor %}</dl>
+{% else %}<div class="empty"><p>This document carries no executor totals.</p></div>{% endif %}
+
+{% for name, g in groups.items() %}
+<h2 class="rule-head">{{ name | replace('_', ' ') }}</h2>
+<dl class="facts">{% for k, v in g.items() %}<div><dt>{{ k | replace('_', ' ') }}</dt><dd>{{ v }}</dd></div>{% endfor %}</dl>
+{% endfor %}
+{% if singles %}
+<h2 class="rule-head">Other</h2>
+<dl class="facts">{% for k, v in singles.items() %}<div><dt>{{ k | replace('_', ' ') }}</dt><dd>{{ v }}</dd></div>{% endfor %}</dl>
+{% endif %}
+
+{% if deleted %}
+<h2 class="rule-head">{{ 'Deleted' if run.mode == 'act' else 'Would have gone' }} <span class="n">{{ deleted | length }}</span></h2>
+<ul class="rows">{% for a in deleted %}<li><div class="top-line"><a href="/title/{{ a.library }}/{{ a.item_id }}">{{ a.title }}{% if a.year %} ({{ a.year }}){% endif %}</a><span class="num">{{ a.size_gb | gb }}</span></div></li>{% endfor %}</ul>
+{% endif %}
+
+<h2 class="rule-head">Digest</h2>
+{% if run.digest %}<pre class="digest">{{ run.digest }}</pre>
+{% else %}<div class="empty"><p>This document carries no digest text.</p></div>{% endif %}
+
+<p class="stack"><a class="button" href="/run/{{ run.library }}/{{ run.run_key | urlencode }}/document">The document as received (JSON)</a></p>
+{% endblock %}

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}{{ heading }} · curator{% endblock %}
+{% block main %}
+<h1>{{ heading }}{% if year %} <span class="meta">({{ year }})</span>{% endif %}</h1>
+<p class="meta">{{ names[library] }} · {{ service[library] }} id {{ item_id }}{% if on_list %} · on this week's list ({{ on_list | replace('_', ' ') }}){% endif %}</p>
+{% if t %}
+{% set line = t | facts %}{% if line %}<p class="meta">{{ line }}</p>{% endif %}
+{% if t.overview %}<p>{{ t.overview }}</p>{% endif %}
+{% endif %}
+<dl class="facts">
+  {% if t %}<div><dt>First listed</dt><dd>{{ t.first_seen | when }}</dd></div>
+  <div><dt>Last listed</dt><dd>{{ t.last_seen | when }}</dd></div>{% endif %}
+  {% if cat %}<div><dt>{{ 'Tags now' if tags_live else 'Tags as last read' }}</dt><dd>{{ cat.tags | join(', ') if cat.tags else 'none' }}</dd></div>
+  <div><dt>Allow list</dt><dd>{% if why %}{% for w in why %}{{ w | replace('bar', 'rating bar') }}{{ ', ' if not loop.last }}{% endfor %}{% else %}not on it{% endif %}</dd></div>
+  {% if cat.genres %}<div><dt>Genres</dt><dd>{{ cat.genres | join(', ') }}</dd></div>{% endif %}
+  {% else %}<div><dt>Library</dt><dd>Not in {{ service[library] }} as last read</dd></div>{% endif %}
+</dl>
+{% if link %}<p class="stack"><a class="button" href="{{ link }}" rel="noreferrer">Open in {{ service[library] }}</a></p>{% endif %}
+
+<h2 class="rule-head">Verdicts <span class="n">{{ verdicts | length }}</span></h2>
+{% if verdicts %}
+<ul class="rows">{% for x in verdicts %}
+  <li><div class="top-line"><b class="{{ 'going-text' if x.verdict == 'delete' else ('keep-text' if x.verdict == 'keep' else '') }}">{{ x.verdict | capitalize }}</b><span class="meta">{{ byline.get(x.by, x.by) }}</span></div>
+    {% if x.reason %}<p class="reason">{{ x.reason }}</p>{% endif %}
+    <p class="sub">Listed under {{ x.section | replace('_', ' ') }} from {{ x.first_seen | when }}{% if x.last_seen != x.first_seen %} to {{ x.last_seen | when }}{% endif %}{% if x.proposed_at %} · proposed {{ x.proposed_at | when }}{% endif %}{% if x.due_at %} · due {{ x.due_at | when }}{% endif %}{% if x.simulated %} · dry run{% endif %}</p></li>
+{% endfor %}</ul>
+{% else %}<div class="empty"><p>No verdict on record for this title.</p></div>{% endif %}
+
+<h2 class="rule-head">Done to it <span class="n">{{ actions | length }}</span></h2>
+{% if actions %}
+<ul class="rows">{% for a in actions %}<li><div class="top-line"><b>{{ 'Deleted' if a.kind == 'deleted' else 'Would have been deleted' }}</b><span class="num">{{ a.size_gb | gb }}</span></div><p class="sub">{{ a.at | when }} · run {{ a.run_key }}</p></li>{% endfor %}</ul>
+{% else %}<div class="empty"><p>Nothing has been done to it.</p></div>{% endif %}
+
+<h2 class="rule-head">Taps <span class="n">{{ taps | length }}</span></h2>
+{% if taps %}
+<ul class="rows">{% for p in taps %}<li><div class="top-line"><b>{{ 'Added' if p.added else 'Removed' }} {{ p.tag }}</b><span class="meta">{{ 'This week' if p.page == 'week' else 'Allow list' }}</span></div><p class="sub">{{ p.at | when }}{% if p.undone_at %} · {{ p.undo_note or 'undone' }} {{ p.undone_at | when }}{% endif %}</p></li>{% endfor %}</ul>
+{% else %}<div class="empty"><p>No button has been pressed for this title.</p></div>{% endif %}
+{% endblock %}

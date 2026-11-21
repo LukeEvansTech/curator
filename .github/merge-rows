@@ -1,0 +1,4 @@
+# Check rows a merge waits for (one per line).
+lint / lint
+test
+build-and-push

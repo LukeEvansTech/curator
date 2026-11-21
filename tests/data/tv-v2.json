@@ -1,0 +1,121 @@
+{
+  "version": 2,
+  "library": "tv",
+  "generated_at": "2026-11-15T08:00:00+00:00",
+  "run_id": "run-20261115T081500-tv0001",
+  "mode": "dry-run",
+  "blocks": ["the play history was incomplete for 3 series"],
+  "cap": 10,
+  "next_run_at": "2026-11-22T08:00:00+00:00",
+  "going": [
+    {
+      "id": 201,
+      "title": "Ninety Weddings in Ninety Days",
+      "year": 2019,
+      "size_gb": 412.0,
+      "imdb_score": 3.9,
+      "imdb_votes": 780,
+      "plays": 0,
+      "finished_by": 0,
+      "origin": "feed",
+      "requested_by": "",
+      "overview": "",
+      "verdict": "delete",
+      "by": "judge",
+      "reason": "Unwatched reality filler; nobody has played an episode.",
+      "proposed_at": "2026-11-08T08:00:00+00:00",
+      "due_at": "2026-11-14T08:00:00+00:00",
+      "simulated": true,
+      "actions": ["keep"]
+    }
+  ],
+  "later": [],
+  "kept": [
+    {
+      "id": 202,
+      "title": "The Slow Detective",
+      "year": 2016,
+      "size_gb": 95.5,
+      "imdb_score": 7.9,
+      "imdb_votes": 24000,
+      "plays": 14,
+      "finished_by": 2,
+      "origin": "feed",
+      "requested_by": "",
+      "overview": "",
+      "verdict": "keep",
+      "by": "judge",
+      "reason": "Scripted, well regarded, played by two people.",
+      "proposed_at": "2026-11-08T08:00:00+00:00",
+      "due_at": "2026-11-14T08:00:00+00:00",
+      "simulated": true,
+      "actions": ["delete"]
+    }
+  ],
+  "needs_you": [],
+  "deleted": [
+    {
+      "id": 203,
+      "title": "Bake or Bust: Lighthouse Edition",
+      "year": 2021,
+      "size_gb": 55.0,
+      "imdb_score": 4.1,
+      "imdb_votes": 300,
+      "plays": 0,
+      "finished_by": 0,
+      "origin": "feed",
+      "requested_by": "",
+      "overview": "",
+      "verdict": "delete",
+      "by": "judge",
+      "reason": "Competition filler with no plays.",
+      "proposed_at": "2026-11-08T08:00:00+00:00",
+      "due_at": "2026-11-14T08:00:00+00:00",
+      "simulated": true,
+      "actions": []
+    }
+  ],
+  "summary": {
+    "plan": {
+      "counts": {
+        "candidate": 98,
+        "protected": 930,
+        "proposed": 12,
+        "review": 0,
+        "too_new": 140
+      },
+      "titles": 1180,
+      "offered": 30,
+      "deferred": 68,
+      "judge_limit": 30,
+      "proposed": 12,
+      "lapsed": 1,
+      "review": 0,
+      "missing_file": 0
+    },
+    "judge": {
+      "status": "partial",
+      "detail": "1 of 7 batches failed: stop_reason max_tokens",
+      "batches": 7,
+      "failed_batches": 1,
+      "input_tokens": 184000,
+      "output_tokens": 21500,
+      "model": "claude-opus"
+    },
+    "executor": {
+      "deleted": 0,
+      "would_delete": 1,
+      "size_gb": 55.0,
+      "skipped": 2,
+      "failed": 0,
+      "uncertain": 0,
+      "deferred": 0,
+      "keep_tags_applied": 3
+    },
+    "digest": {
+      "title": "TV cleanup: 1 would go Sunday",
+      "message": "1 series would go on Sunday 22 November (412 GB).",
+      "text": "TV cleanup, dry run\n1 series would go on Sunday 22 November (412 GB).\nOpen the review page to keep anything."
+    }
+  }
+}

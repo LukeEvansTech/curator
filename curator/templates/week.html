@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}This week · curator{% endblock %}
+{% block main %}
+{% for v in views %}
+<section id="{{ v.library }}">
+  <h2 class="lib">{{ names[v.library] }}</h2>
+  {% if not v.doc %}
+  <div class="empty"><p>No review document yet. The next weekly run publishes one.</p></div>
+  {% else %}
+  {% set doc = v.doc %}
+  {% set rehearsal = doc.mode != 'act' %}
+  <p class="meta">Published {{ doc.generated_at | when }} · at most {{ doc.cap }} a run · <a href="/run/{{ v.library }}/{{ v.run_key | urlencode }}">this run</a></p>
+  <ul class="totals">
+    <li class="going"><b>{{ doc.going | length }}</b>{{ 'would go' if rehearsal else 'going' }} · {{ doc.going | total_gb }}</li>
+    <li><b>{{ doc.later | length }}</b>later</li>
+    <li><b>{{ doc.kept | length }}</b>being kept</li>
+    <li><b>{{ doc.needs_you | length }}</b>need you</li>
+    <li><b>{{ doc.deleted | length }}</b>{{ 'would have gone' if rehearsal else 'deleted' }} last run</li>
+  </ul>
+  {% if rehearsal %}<div class="banner"><b>Dry run.</b> Nothing is deleted yet; the buttons still set real tags.</div>{% endif %}
+  {% if v.stale %}<div class="banner bad"><b>This list is old.</b> No document has arrived since {{ doc.generated_at | when }}. Check the run on Ops.</div>{% endif %}
+  {% if doc.blocks %}<div class="banner"><b>The last run was blocked, so it deleted nothing.</b><ul>{% for b in doc.blocks %}<li>{{ b }}</li>{% endfor %}</ul></div>{% endif %}
+  {% if v.live is none %}<div class="banner bad"><b>The live tags could not be read.</b> {{ v.error }}. The buttons may not show a tag set elsewhere.</div>{% endif %}
+
+  <h3 class="rule-head">{{ 'Would go' if rehearsal else 'Going' }} on {{ doc.next_run_at | day }} <span class="n">{{ doc.going | length }}</span></h3>
+  <p class="hint">Leave a title alone and the next run deletes it. Keep protects it for good.</p>
+  {% if doc.going %}<ul class="cards">{% for item in doc.going %}{% set section = 'going' %}{% include "_card.html" %}{% endfor %}</ul>
+  {% else %}<div class="empty"><p>Nothing is due at the next run.</p></div>{% endif %}
+
+  {% if doc.needs_you %}
+  <h3 class="rule-head">Needs you <span class="n">{{ doc.needs_you | length }}</span></h3>
+  <p class="hint">Nothing happens to these until somebody decides.</p>
+  <ul class="cards">{% for item in doc.needs_you %}{% set section = 'needs_you' %}{% include "_card.html" %}{% endfor %}</ul>
+  {% endif %}
+
+  {% if doc.later %}
+  <details><summary class="rule-head">Later <span class="n">{{ doc.later | length }}</span></summary>
+    <p class="hint">Not yet due, or held back by the cap. A later run takes them, largest first.</p>
+    <ul class="cards">{% for item in doc.later %}{% set section = 'later' %}{% include "_card.html" %}{% endfor %}</ul>
+  </details>
+  {% endif %}
+
+  {% if doc.kept %}
+  <details><summary class="rule-head">Being kept <span class="n">{{ doc.kept | length }}</span></summary>
+    <p class="hint">The judge chose to keep these. Each gets the keep tag when its wait is over, unless you say otherwise.</p>
+    <ul class="cards">{% for item in doc.kept %}{% set section = 'kept' %}{% include "_card.html" %}{% endfor %}</ul>
+  </details>
+  {% endif %}
+
+  {% if doc.deleted %}
+  <details><summary class="rule-head">{{ 'Would have gone' if rehearsal else 'Deleted' }} last run <span class="n">{{ doc.deleted | length }}</span></summary>
+    <ul class="cards">{% for item in doc.deleted %}{% set section = 'deleted' %}{% include "_card.html" %}{% endfor %}</ul>
+  </details>
+  {% endif %}
+  {% endif %}
+</section>
+{% endfor %}
+{% endblock %}
