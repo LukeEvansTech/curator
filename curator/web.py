@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from fastapi import FastAPI, Form, HTTPException, Request
+from fastapi import FastAPI, Form, HTTPException, Query, Request
 from fastapi.responses import (
     HTMLResponse,
     JSONResponse,
@@ -42,6 +42,7 @@ SIGNATURE_HEADER = "x-curator-signature"
 SHOWN_JUDGE = {name for names in JUDGE_FIELDS.values() for name in names}
 LIVE_TTL = 10.0  # seconds a read of the live tags serves a page before it is read again
 ALLOW_PAGE = 300  # rows the allow list shows at once
+DELETED_PAGE = 100  # rows a page of /deleted shows
 POLICY = (
     "default-src 'none'; style-src 'self'; font-src 'self'; img-src 'self'; "
     "form-action 'self'; base-uri 'none'; frame-ancestors 'none'"
@@ -320,21 +321,32 @@ def create_app(
         at = moment(doc["generated_at"])
         view["stale"] = bool(at and (dt.datetime.now(dt.timezone.utc) - at).days >= s.stale_days)
         view["run_key"] = ingest.run_key(doc, doc_id)
+        ids = [i["id"] for k in ("going", "later", "kept", "needs_you") for i in doc.get(k) or []]
+        # Taps are reconciled with the tags (a pending add confirmed, a removed tag's tap closed)
+        # only under the lock the buttons hold and on a read taken inside it, so an older read
+        # can never close a tap a press has just recorded. When a press holds the lock, the page
+        # shows the taps as they stand and the next load reconciles.
+        reconciled = ingest.LOCK.acquire(blocking=False)  # pylint: disable=consider-using-with
         try:
-            view["live"] = live(library)
-        except ArrError as exc:
-            view["error"] = str(exc)
-        mine, pending = {}, set()
-        for items in (doc.get(k) or [] for k in ("going", "later", "kept", "needs_you")):
-            for i in items:
-                if view["live"] is not None:
-                    tap = buttons.settle(db, library, i["id"], view["live"])
+            try:
+                view["live"] = live(library, fresh=reconciled)
+            except ArrError as exc:
+                view["error"] = str(exc)
+            taps = {}
+            for item_id in ids:
+                if reconciled and view["live"] is not None:
+                    taps[item_id] = buttons.settle(db, library, item_id, view["live"])
                 else:
-                    tap = buttons.open_tap(db, library, i["id"])
-                if tap and not tap["confirmed"]:
-                    pending.add(i["id"])
-                elif tap:
-                    mine[i["id"]] = tap["tag"]
+                    taps[item_id] = buttons.open_tap(db, library, item_id)
+        finally:
+            if reconciled:
+                ingest.LOCK.release()
+        mine, pending = {}, set()
+        for item_id, tap in taps.items():
+            if tap and not tap["confirmed"]:
+                pending.add(item_id)
+            elif tap:
+                mine[item_id] = tap["tag"]
         view["mine"], view["pending"] = mine, pending
         return view
 
@@ -594,16 +606,22 @@ def create_app(
 
     # --- deleted ---
     @app.get("/deleted", response_class=HTMLResponse)
-    def deleted(request: Request, library: str = ""):
+    def deleted(request: Request, library: str = "", page_no: int = Query(1, alias="page")):
         lib = library if library in LIBRARIES else ""
         now = dt.datetime.now(dt.timezone.utc)
+        where = "WHERE (? = '' OR a.library = ?)"
+        count = db.count(f"SELECT count(*) FROM actions a {where}", lib, lib)  # nosec B608
+        pages = max(1, -(-count // DELETED_PAGE))
+        page_no = min(max(page_no, 1), pages)
         rows = []
         for r in db.all(
-            "SELECT a.*, c.slug FROM actions a LEFT JOIN catalogue c"
-            " ON c.library = a.library AND c.id = a.item_id"
-            " WHERE (? = '' OR a.library = ?) ORDER BY a.size_gb DESC, a.at DESC LIMIT 1000",
+            "SELECT a.*, c.slug FROM actions a LEFT JOIN catalogue c"  # nosec B608
+            f" ON c.library = a.library AND c.id = a.item_id {where}"
+            " ORDER BY a.size_gb DESC, a.at DESC, a.id DESC LIMIT ? OFFSET ?",
             lib,
             lib,
+            DELETED_PAGE,
+            (page_no - 1) * DELETED_PAGE,
         ):
             row = dict(r)
             at = moment(row["at"])
@@ -611,14 +629,23 @@ def create_app(
             row["bin_until"] = until.isoformat() if until else ""
             row["in_bin"] = bool(until and until > now and row["kind"] == "deleted")
             rows.append(row)
-        total = sum(float(r["size_gb"] or 0) for r in rows if r["kind"] == "deleted")
+        sums = db.one(
+            "SELECT coalesce(sum(size_gb), 0) AS gb, count(*) AS n FROM actions a"  # nosec B608
+            f" {where} AND a.kind = 'deleted'",
+            lib,
+            lib,
+        )
         return page(
             request,
             "deleted.html",
             nav="deleted",
             rows=rows,
             library=lib,
-            total=total,
+            total=sums["gb"] if sums else 0,
+            deleted_n=sums["n"] if sums else 0,
+            count=count,
+            page_no=page_no,
+            pages=pages,
             recycle_days=s.recycle_days,
         )
 

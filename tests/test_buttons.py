@@ -231,3 +231,16 @@ def test_live_keep_outranks_this_apps_delete_instead(env):
     card = client.get("/").text.split('id="film-105"')[1].split("</li>")[0]
     assert "which outranks this app" in card and "Marked for deletion" not in card
     assert 'value="undo"' in card
+
+
+def test_a_page_drawn_while_a_press_holds_the_lock_never_closes_a_tap(env):
+    from curator import buttons
+
+    db, client, film = setup(env)
+    assert press(client, 101, "keep").status_code == 303
+    film.tags["cleanup-keep"][1].discard(101)  # what a read from before the press would show
+    with buttons.LOCK:  # a press is mid-flight
+        assert "Mega Gator" in client.get("/").text
+    assert db.one("SELECT undone_at FROM taps")["undone_at"] is None
+    film.tags["cleanup-keep"][1].add(101)  # the press's tag, as it really stands
+    assert press(client, 101, "undo").status_code == 303

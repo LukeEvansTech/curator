@@ -145,3 +145,21 @@ def test_judge_figures_render_on_their_own(env):
     page = client.get("/run/tv/run-20261115T081500-tv0001").text
     assert "no judge figures" not in page
     assert "50,000" in page and "$1.00" in page and "Failed batches" in page
+
+
+def test_deleted_pages_through_everything_and_totals_it_all(env):
+    _, db, client, *_ = env
+    for i in range(1, 251):
+        db.run(
+            "INSERT INTO actions (library, item_id, kind, title, size_gb, at, run_key)"
+            " VALUES ('film', ?, 'deleted', ?, ?, '2026-11-01T08:00:00+00:00', 'r')",
+            i,
+            f"Filler Film {i:03d}",
+            1000 - i,
+        )
+    first = client.get("/deleted").text
+    assert "250 deleted in all" in first and "Page 1 of 3" in first
+    assert "Filler Film 001" in first and "Filler Film 250" not in first
+    last = client.get("/deleted?page=3").text
+    assert "Filler Film 250" in last and "Filler Film 001" not in last
+    assert client.get("/deleted?page=99").status_code == 200  # clamped to the last page
