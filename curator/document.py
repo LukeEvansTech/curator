@@ -92,7 +92,7 @@ def _number(value: Any, name: str) -> int | float | None:
         return None
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise Invalid(f"{name} is not a usable number")
-    if not math.isfinite(value) or not 0 <= value <= 1e15:
+    if not 0 <= value <= 1e15 or not math.isfinite(value):  # bound first: see _scalar
         raise Invalid(f"{name} is not a usable number")
     return value
 
@@ -126,7 +126,8 @@ def _scalar(value: Any) -> str | int | float | bool | None:
     if isinstance(value, bool):
         return value
     if isinstance(value, (int, float)):
-        return value if math.isfinite(value) and abs(value) <= 1e15 else None
+        # bound first: math.isfinite overflows on a huge JSON integer
+        return value if abs(value) <= 1e15 and math.isfinite(value) else None
     if isinstance(value, str):
         return value.strip()[:SUMMARY_TEXT]
     return None

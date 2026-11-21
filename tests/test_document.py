@@ -82,3 +82,14 @@ def test_signature_matches_the_engine_recipe():
     body = b'{"a":1}'
     want = "sha256=" + hmac.new(b"k", b"film\n" + body, hashlib.sha256).hexdigest()
     assert sign("k", "film", body) == want
+
+
+def test_huge_integers_are_dropped_from_a_summary_and_refused_in_a_title():
+    out = summary(
+        {"judge": {"input_tokens": 10**309, "output_tokens": 7}, "plan": {"x": -(10**400)}}
+    )
+    assert out == {"judge": {"output_tokens": 7}}
+    doc = sample("film-v1")
+    doc["going"][0]["size_gb"] = 10**309
+    with pytest.raises(Invalid):
+        normalise("film", doc)

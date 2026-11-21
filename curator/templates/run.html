@@ -22,11 +22,12 @@
 {% else %}<div class="empty"><p>This document carries no plan counts (they arrive with document version 2).</p></div>{% endif %}
 
 <h2 class="rule-head">Judge</h2>
-{% if judge or run.judge_status or run.model or run.judge_batches is not none or run.tokens_in is not none %}
+{% if judge or run.judge_status or run.model or run.judge_batches is not none or run.judge_failed is not none or run.tokens_in is not none or run.tokens_out is not none %}
 <dl class="facts">
   {% if run.judge_status %}<div><dt>Status</dt><dd>{{ run.judge_status }}</dd></div>{% endif %}
   {% if run.model %}<div><dt>Model</dt><dd>{{ run.model }}</dd></div>{% endif %}
-  {% if run.judge_batches is not none %}<div><dt>Batches</dt><dd class="num">{{ run.judge_batches }}{% if run.judge_failed %} · <span class="bad-text">{{ run.judge_failed }} failed</span>{% endif %}</dd></div>{% endif %}
+  {% if run.judge_batches is not none %}<div><dt>Batches</dt><dd class="num">{{ run.judge_batches }}</dd></div>{% endif %}
+  {% if run.judge_failed is not none %}<div><dt>Failed batches</dt><dd class="num {{ 'bad-text' if run.judge_failed }}">{{ run.judge_failed }}</dd></div>{% endif %}
   {% if run.tokens_in is not none %}<div><dt>Tokens in</dt><dd class="num">{{ '{:,}'.format(run.tokens_in) }}</dd></div>{% endif %}
   {% if run.tokens_out is not none %}<div><dt>Tokens out</dt><dd class="num">{{ '{:,}'.format(run.tokens_out) }}</dd></div>{% endif %}
   {% if run.tokens_in is not none or run.tokens_out is not none %}<div><dt>Estimated cost</dt><dd class="num">{{ cost(run.tokens_in, run.tokens_out) }}</dd></div>{% endif %}

@@ -134,3 +134,13 @@ def test_hostile_text_is_escaped_everywhere(env):
         assert "<img src=x" not in page, path
         if path != "/runs":  # the runs list shows none of the document's text
             assert "&lt;script&gt;" in page, path
+
+
+def test_judge_figures_render_on_their_own(env):
+    _, _, client, *_ = env
+    tv = sample("tv-v2")
+    tv["summary"] = {"judge": {"output_tokens": 50000, "batches_failed": 2}}
+    assert publish(client, "tv", tv).status_code == 200
+    page = client.get("/run/tv/run-20261115T081500-tv0001").text
+    assert "no judge figures" not in page
+    assert "50,000" in page and "$1.00" in page and "Failed batches" in page

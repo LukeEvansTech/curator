@@ -9,6 +9,7 @@ so no caller can widen what this app is able to write.
 from __future__ import annotations
 
 import json
+import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
@@ -23,6 +24,10 @@ ALLOW_TAGS = ("keep", TAG_KEEP, "keep-review")
 
 class ArrError(RuntimeError):
     """The service could not be read, or a tag change could not be confirmed."""
+
+
+class Unconfirmed(ArrError):
+    """The service took the change, but the tag had not moved by the last read-back."""
 
 
 @dataclass(frozen=True)
@@ -90,10 +95,15 @@ def title_of(record: dict, labels: dict[int, str], film: bool) -> dict | None:
 class TagClient:
     """Reads one library, and changes the two decision tags in it."""
 
-    def __init__(self, service: Service, opener=None, timeout: int = 20):
+    # Read-backs after a tag change, and the pause before each re-read.
+    CONFIRM_READS = 5
+    CONFIRM_PAUSE = 0.6
+
+    def __init__(self, service: Service, opener=None, timeout: int = 20, sleep=time.sleep):
         self.service = service
         self.timeout = timeout
         self._opener = opener or urllib.request.build_opener()
+        self._sleep = sleep
 
     @property
     def configured(self) -> bool:
@@ -191,12 +201,15 @@ class TagClient:
             self.service.editor_path,
             {self.service.ids_field: [item_id], "tags": [tag_id], "applyTags": mode},
         )
-        carries = item_id in self.tagged()[label]
-        if carries != (mode == "add"):
-            raise ArrError(
-                f"{self.service.name} accepted the change but the tag did not "
-                f"{'land' if mode == 'add' else 'go'}"
-            )
+        for attempt in range(self.CONFIRM_READS):
+            if attempt:
+                self._sleep(self.CONFIRM_PAUSE)
+            if (item_id in self.tagged()[label]) == (mode == "add"):
+                return
+        raise Unconfirmed(
+            f"{self.service.name} accepted the change but the tag did not "
+            f"{'land' if mode == 'add' else 'go'}"
+        )
 
     def add(self, item_id: int, label: str) -> None:
         self._apply(item_id, label, "add")

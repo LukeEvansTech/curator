@@ -49,6 +49,8 @@ class FakeArr:
         self.requests: list[tuple[str, str, Any]] = []
         self.fail: Exception | None = None
         self.ignore: set[int] = set()  # ids whose tag the editor accepts and never applies
+        self.lag = 0  # tag reads that still show the old state after an editor change
+        self._stale = 0
 
     def carrying(self, label: str) -> set[int]:
         return set(self.tags.get(label, (0, set()))[1])
@@ -77,6 +79,9 @@ class FakeArr:
         self.requests.append((method, path, body))
         if self.fail is not None:
             raise self.fail
+        if method == "GET" and path == "/api/v3/tag/detail" and self._stale:
+            self._stale -= 1
+            return _Response(json.dumps(self._before).encode())
         if method == "GET" and path == "/api/v3/tag/detail":
             detail = [
                 {"id": tid, "label": label, self.ids_field: sorted(ids)}
@@ -97,6 +102,11 @@ class FakeArr:
                 json.dumps({"id": len(self.tags), "label": body["label"]}).encode(), 201
             )
         if method == "PUT" and path == self.editor_path:
+            self._before = [
+                {"id": tid, "label": label, self.ids_field: sorted(ids)}
+                for label, (tid, ids) in self.tags.items()
+            ]
+            self._stale = self.lag
             for label, (tid, ids) in self.tags.items():
                 if tid not in body["tags"]:
                     continue
@@ -169,8 +179,8 @@ def env(tmp_path, monkeypatch):
     )
     tv = FakeArr("seriesIds", {"keep": []}, TV_TITLES)
     clients = {
-        "film": TagClient(radarr(s.radarr_url, s.radarr_key), opener=film),
-        "tv": TagClient(sonarr(s.sonarr_url, s.sonarr_key), opener=tv),
+        "film": TagClient(radarr(s.radarr_url, s.radarr_key), opener=film, sleep=lambda _: None),
+        "tv": TagClient(sonarr(s.sonarr_url, s.sonarr_key), opener=tv, sleep=lambda _: None),
     }
     client = TestClient(create_app(s, db, clients))
     return s, db, client, film, tv

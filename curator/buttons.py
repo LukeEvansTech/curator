@@ -10,16 +10,15 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-import threading
 from dataclasses import dataclass
 
 from . import allow
-from .arr import TAG_DELETE, TAG_KEEP, TagClient
+from .arr import TAG_DELETE, TAG_KEEP, TagClient, Unconfirmed
 from .db import DB
 from .document import find
+from .ingest import LOCK
 
 TAG_FOR = {"keep": TAG_KEEP, "delete": TAG_DELETE}
-LOCK = threading.Lock()  # one press at a time: each reads the live tags before it writes
 
 
 class Refused(Exception):
@@ -87,21 +86,20 @@ def week(
     """One This week button."""
     if action not in ("keep", "delete", "undo"):
         raise Refused(400, "That button does not exist.")
-    latest = db.latest(library)
-    if latest is None:
-        raise Refused(404, "No list has been published for that library yet.")
-    doc_id, doc = latest
-    expected = form_token(key, library, doc_id)
-    if not expected or not hmac.compare_digest(expected.encode(), token.encode()):
-        raise Refused(409, "The list has changed since this page was loaded. Reload it.")
-    found = find(doc, item_id)
-    if found is None:
-        raise Refused(404, "That title is not on the current list.")
-    item = found[1]
     if not client.configured:
         raise Refused(503, "The service for this library is not configured.")
-
-    with LOCK:
+    with LOCK:  # held from the document check to the tag change, so a publish cannot slip between
+        latest = db.latest(library)
+        if latest is None:
+            raise Refused(404, "No list has been published for that library yet.")
+        doc_id, doc = latest
+        expected = form_token(key, library, doc_id)
+        if not expected or not hmac.compare_digest(expected.encode(), token.encode()):
+            raise Refused(409, "The list has changed since this page was loaded. Reload it.")
+        found = find(doc, item_id)
+        if found is None:
+            raise Refused(404, "That title is not on the current list.")
+        item = found[1]
         live = client.tagged()
         mine = open_tap(db, library, item_id)
         if mine and item_id not in live.get(mine["tag"], frozenset()):
@@ -125,8 +123,14 @@ def week(
         if item_id in live.get(tag, frozenset()):
             # Already tagged elsewhere: nothing to add, and nothing this app may later undo.
             return Done(f"It already carries {tag}.", False)
-        client.add(item_id, tag)
-        # Recorded only once the tag is confirmed, so undo never removes a tag this app did not add.
+        try:
+            client.add(item_id, tag)
+        except Unconfirmed:
+            # The service took this app's change but had not shown it yet: it is still this
+            # app's to undo once it lands (an undo first checks the tag is there).
+            _record(db, library, item_id, "week", action, tag, True, doc_id)
+            raise
+        # Recorded once the tag is confirmed, so undo never removes a tag this app did not add.
         _record(db, library, item_id, "week", action, tag, True, doc_id)
         allow.set_tags(db, library, item_id, tag, True)
         return Done("Kept." if action == "keep" else "Marked for deletion.", True)

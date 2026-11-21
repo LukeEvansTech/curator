@@ -14,7 +14,9 @@ from .db import DB
 
 # The engines' own run id rule (acting.py RUN_ID); anything else is named by the document instead.
 RUN_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$")
-LOCK = threading.Lock()  # one publish at a time: the stale check reads before it writes
+# One publish or button press at a time: a publish's stale check reads before it writes, and a
+# press must act on the document that is latest when its tag changes, not when it was checked.
+LOCK = threading.Lock()
 
 
 class Stale(ValueError):

@@ -120,12 +120,30 @@ def test_undo_refused_once_the_tag_was_removed_elsewhere(env):
     assert db.one("SELECT undo_note FROM taps")["undo_note"] == "tag removed outside this app"
 
 
-def test_a_tag_the_service_never_applies_is_reported_not_recorded(env):
+def test_a_tag_that_lands_late_is_confirmed_on_a_later_read(env):
+    db, client, film = setup(env)
+    film.lag = 2  # the first two read-backs still show the old tags
+    assert press(client, 101, "keep").status_code == 303
+    assert db.one("SELECT count(*) AS n FROM taps")["n"] == 1
+
+
+def test_a_tag_never_seen_to_land_is_reported_but_stays_undoable(env):
     db, client, film = setup(env)
     film.ignore.add(101)
     r = press(client, 101, "keep")
     assert r.status_code == 502 and "did not land" in r.text
-    assert db.one("SELECT count(*) AS n FROM taps")["n"] == 0
+    # the change was this app's, so if it lands later the tap lets Undo remove it
+    assert db.one("SELECT tag, undone_at FROM taps")["tag"] == "cleanup-keep"
+    film.ignore.clear()
+    film.tags["cleanup-keep"][1].add(101)  # it landed after all
+    assert press(client, 101, "undo").status_code == 303
+    assert 101 not in film.carrying("cleanup-keep")
+
+
+def test_presses_and_publishes_share_one_lock():
+    from curator import buttons, ingest
+
+    assert buttons.LOCK is ingest.LOCK
 
 
 def test_service_down_is_a_502_and_the_page_says_so(env):
