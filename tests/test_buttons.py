@@ -341,3 +341,52 @@ def test_this_week_closes_taps_on_titles_no_longer_listed(env):
     film.tags["cleanup-keep"][1].discard(101)
     client.get("/")
     assert db.one("SELECT undo_note FROM taps")["undo_note"] == "tag removed outside this app"
+
+
+def kept_offering_keep(env):
+    """The tv document as the engine now sends it: the judge's keep offers Keep forever too."""
+    _, db, client, _, tv = env
+    doc = sample("tv-v2")
+    doc["kept"][0]["actions"] = ["delete", "keep"]
+    assert publish(client, "tv", doc).status_code == 200
+    return db, client, tv
+
+
+def test_kept_item_offering_both_actions_shows_keep_forever_beside_delete_instead(env):
+    db, client, tv = kept_offering_keep(env)
+    page = client.get("/").text
+    assert "Being kept for a year" in page
+    card = page.split('id="tv-202"')[1].split("</li>")[0]
+    assert card.count("<form") == 2
+    assert ">Keep forever</button>" in card and ">Delete instead</button>" in card
+    assert ">Keep</button>" not in card
+    r = press(client, 202, "keep", library="tv")
+    assert r.status_code == 303 and r.headers["location"] == "/#tv-202"
+    assert 202 in tv.carrying("cleanup-keep") and 202 not in tv.carrying("cleanup-eligible")
+    tap = db.one("SELECT * FROM taps")
+    assert (tap["item_id"], tap["tag"], tap["page"], tap["added"]) == (
+        202,
+        "cleanup-keep",
+        "week",
+        1,
+    )
+    card = client.get("/").text.split('id="tv-202"')[1].split("</li>")[0]
+    assert "Kept. It will not be deleted." in card and 'value="undo"' in card
+    assert press(client, 202, "undo", library="tv").status_code == 303
+    assert 202 not in tv.carrying("cleanup-keep")
+
+
+def test_kept_item_offering_only_delete_shows_one_button(env):
+    _, client, film = setup(env)
+    card = client.get("/").text.split('id="film-105"')[1].split("</li>")[0]
+    assert card.count("<form") == 1 and ">Delete instead</button>" in card
+    assert "Keep forever" not in card
+    r = press(client, 105, "keep")
+    assert r.status_code == 403 and 105 not in film.carrying("cleanup-keep")
+
+
+def test_keep_outside_the_kept_section_is_still_labelled_keep(env):
+    db, client, _ = kept_offering_keep(env)
+    card = client.get("/").text.split('id="tv-201"')[1].split("</li>")[0]
+    assert ">Keep</button>" in card and "Keep forever" not in card
+    assert db.one("SELECT count(*) AS n FROM taps")["n"] == 0

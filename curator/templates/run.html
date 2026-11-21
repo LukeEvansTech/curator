@@ -10,7 +10,7 @@
   <div><dt>Cap</dt><dd class="num">{{ run.cap }} a run</dd></div>
   <div><dt>Going</dt><dd class="num">{{ run.going_n }} · {{ run.going_gb | gb }}</dd></div>
   <div><dt>Later</dt><dd class="num">{{ run.later_n }}</dd></div>
-  <div><dt>Being kept</dt><dd class="num">{{ run.kept_n }}</dd></div>
+  <div><dt>Kept for a year</dt><dd class="num">{{ run.kept_n }}</dd></div>
   <div><dt>Needs you</dt><dd class="num">{{ run.needs_n }}</dd></div>
   <div><dt>{{ 'Deleted' if run.mode == 'act' else 'Would have gone' }}</dt><dd class="num">{{ run.deleted_n }} · {{ run.deleted_gb | gb }}</dd></div>
 </dl>

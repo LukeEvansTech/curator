@@ -2,7 +2,7 @@
 {% block title %}{{ heading }} · curator{% endblock %}
 {% block main %}
 <h1>{{ heading }}{% if year %} <span class="meta">({{ year }})</span>{% endif %}</h1>
-<p class="meta">{{ names[library] }} · {{ service[library] }} id {{ item_id }}{% if on_list %} · on this week's list ({{ on_list | replace('_', ' ') }}){% endif %}</p>
+<p class="meta">{{ names[library] }} · {{ service[library] }} id {{ item_id }}{% if on_list %} · on this week's list ({{ 'kept for a year' if on_list == 'kept' else on_list | replace('_', ' ') }}){% endif %}</p>
 {% if t %}
 {% set line = t | facts %}{% if line %}<p class="meta">{{ line }}</p>{% endif %}
 {% if t.overview %}<p>{{ t.overview }}</p>{% endif %}

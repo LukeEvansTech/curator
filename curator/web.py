@@ -401,7 +401,8 @@ def create_app(
                 tone="gone",
             )
         if "keep" in item["actions"]:
-            out["buttons"].append(("keep", "Keep"))
+            # The judge already keeps these for a year; this Keep is the lasting one.
+            out["buttons"].append(("keep", "Keep forever" if section == "kept" else "Keep"))
         if "delete" in item["actions"] and not has_del:
             out["buttons"].append(("delete", "Delete instead"))
         return out

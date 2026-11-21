@@ -180,3 +180,17 @@ def test_runs_page_through_the_whole_history(env):
     assert "Page 1 of 2 (60 runs)" in first and "run-060" in first and "run-001" not in first
     second = client.get("/runs?page=2").text
     assert "run-001" in second and "run-060" not in second
+
+
+def test_wording_says_the_judge_keeps_for_a_year(env):
+    _, _, client, *_ = env
+    load(client)
+    page = client.get("/").text
+    assert "Being kept for a year" in page and "kept for a year</li>" in page
+    assert "The judge chose to keep these for a year, then judges them again." in page
+    assert "gets the keep tag" not in page
+    assert "Keep and Keep forever add cleanup-keep" in page
+    assert "held for a year, then judged again" in page
+    title = client.get("/title/film/105").text
+    assert "on this week's list (kept for a year)" in title
+    assert "Kept for a year" in client.get("/run/film/run-20261115T080000-f1lm01").text

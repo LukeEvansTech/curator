@@ -97,6 +97,16 @@ def _number(value: Any, name: str) -> int | float | None:
     return value
 
 
+def _list(value: Any, name: str) -> list:
+    """A list, or empty when absent or null. Any other value is refused: read as empty, a
+    malformed `{}` or `false` would show "nothing is due" in place of the titles it should hold."""
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        raise Invalid(f"{name} is not a list")
+    return value
+
+
 def _item(raw: Any, section: str) -> dict[str, Any]:
     """One title, reduced to the fields the pages show."""
     if not isinstance(raw, dict):
@@ -104,8 +114,8 @@ def _item(raw: Any, section: str) -> dict[str, Any]:
     item_id = raw.get("id")
     if not isinstance(item_id, int) or isinstance(item_id, bool) or not 0 < item_id < 2**53:
         raise Invalid(f"an entry in {section} has no usable id")
-    actions = raw.get("actions") or []
-    if not isinstance(actions, list) or any(a not in ACTIONS for a in actions):
+    actions = _list(raw.get("actions"), f"actions of entry {item_id} in {section}")
+    if any(a not in ACTIONS for a in actions):
         raise Invalid(f"entry {item_id} in {section} names an action this app does not have")
     item: dict[str, Any] = {"id": item_id}
     for name, limit in TEXT_LIMITS.items():
@@ -210,8 +220,8 @@ def normalise(library: str, payload: Any) -> dict[str, Any]:
     cap = payload.get("cap")
     if not isinstance(cap, int) or isinstance(cap, bool) or not 0 <= cap < 2**31:
         raise Invalid("cap is not a whole number")
-    blocks = payload.get("blocks") or []
-    if not isinstance(blocks, list) or len(blocks) > MAX_BLOCKS:
+    blocks = _list(payload.get("blocks"), "blocks")
+    if len(blocks) > MAX_BLOCKS:
         raise Invalid("blocks is not a short list")
 
     document: dict[str, Any] = {
@@ -228,9 +238,7 @@ def normalise(library: str, payload: Any) -> dict[str, Any]:
     seen: set[int] = set()
     total = 0
     for section in SECTIONS:
-        entries = payload.get(section) or []
-        if not isinstance(entries, list):
-            raise Invalid(f"{section} is not a list")
+        entries = _list(payload.get(section), section)
         total += len(entries)
         if total > MAX_ITEMS:
             raise Invalid("the document lists more titles than this app will hold")

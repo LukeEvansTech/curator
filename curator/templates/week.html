@@ -13,7 +13,7 @@
   <ul class="totals">
     <li class="going"><b>{{ doc.going | length }}</b>{{ 'would go' if rehearsal else 'going' }} · {{ doc.going | total_gb }}</li>
     <li><b>{{ doc.later | length }}</b>later</li>
-    <li><b>{{ doc.kept | length }}</b>being kept</li>
+    <li><b>{{ doc.kept | length }}</b>kept for a year</li>
     <li><b>{{ doc.needs_you | length }}</b>need you</li>
     <li><b>{{ doc.deleted | length }}</b>{{ 'would have gone' if rehearsal else 'deleted' }} last run</li>
   </ul>
@@ -41,8 +41,8 @@
   {% endif %}
 
   {% if doc.kept %}
-  <details><summary class="rule-head">Being kept <span class="n">{{ doc.kept | length }}</span></summary>
-    <p class="hint">The judge chose to keep these. Each gets the keep tag when its wait is over, unless you say otherwise.</p>
+  <details><summary class="rule-head">Being kept for a year <span class="n">{{ doc.kept | length }}</span></summary>
+    <p class="hint">The judge chose to keep these for a year, then judges them again. Keep forever adds cleanup-keep so no run deletes them; Delete instead marks them for the next run.</p>
     <ul class="cards">{% for item in doc.kept %}{% set section = 'kept' %}{% include "_card.html" %}{% endfor %}</ul>
   </details>
   {% endif %}

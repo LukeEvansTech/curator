@@ -14,7 +14,8 @@ allow list and what was deleted is occasional.
 ## Product Purpose
 
 The cleanup plans, an LLM judge proposes keep or delete with a reason, and the executor acts after a
-one-week window. Curator is where that becomes visible and overrulable: every run and verdict is
+one-week window. The judge's keep holds a title for a year, then it is judged again; keeping it for
+good is a person's decision (Keep forever) or the rating bar's. Curator is where that becomes visible and overrulable: every run and verdict is
 kept, and a person can veto the judge with one tap in either direction. Doing nothing means the
 cleanup proceeds. Success: nothing goes that the owner would have kept, and the run history is
 never invisible again.
