@@ -51,6 +51,7 @@ class FakeArr:
         self.ignore: set[int] = set()  # ids whose tag the editor accepts and never applies
         self.lag = 0  # tag reads that still show the old state after an editor change
         self._stale = 0
+        self._before: list[dict] = []
 
     def carrying(self, label: str) -> set[int]:
         return set(self.tags.get(label, (0, set()))[1])
