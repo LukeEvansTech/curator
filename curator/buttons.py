@@ -65,7 +65,13 @@ def settle(db: DB, library: str, item_id: int, live: dict[str, frozenset[int]], 
     Returns None when there is none; a tap whose `confirmed` is still 0 is waiting.
     """
     tap = open_tap(db, library, item_id, page)
-    if tap is None or tap["confirmed"]:
+    if tap is None:
+        return None
+    if tap["confirmed"]:
+        if item_id not in live.get(tap["tag"], frozenset()):
+            # Seen gone: whatever tag appears later is not this app's to undo.
+            close_tap(db, tap["id"], "tag removed outside this app")
+            return None
         return tap
     at = moment(tap["at"])
     fresh = at is not None and dt.datetime.now(dt.timezone.utc) - at <= PENDING_GRACE

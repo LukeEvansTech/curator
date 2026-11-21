@@ -201,11 +201,16 @@ class TagClient:
             self.service.editor_path,
             {self.service.ids_field: [item_id], "tags": [tag_id], "applyTags": mode},
         )
+        # From here the service has taken the change, so any failure to see it is "unconfirmed",
+        # never a plain error: the caller must treat the change as possibly made.
         for attempt in range(self.CONFIRM_READS):
             if attempt:
                 self._sleep(self.CONFIRM_PAUSE)
-            if (item_id in self.tagged()[label]) == (mode == "add"):
-                return
+            try:
+                if (item_id in self.tagged()[label]) == (mode == "add"):
+                    return
+            except ArrError:
+                continue
         raise Unconfirmed(
             f"{self.service.name} accepted the change but the tag did not "
             f"{'land' if mode == 'add' else 'go'}"

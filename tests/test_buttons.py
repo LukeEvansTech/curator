@@ -188,3 +188,46 @@ def test_the_app_never_writes_the_keep_tag(env):
     with pytest.raises(ValueError):
         c.remove(301, "keep")
     assert film.writes() == []
+
+
+def test_a_tag_seen_gone_closes_the_tap_so_a_later_one_is_not_undone(env):
+    _, client, film = setup(env)
+    assert press(client, 101, "keep").status_code == 303
+    film.tags["cleanup-keep"][1].discard(101)  # removed in Radarr
+    client.get("/")  # a page read observes the removal
+    film.tags["cleanup-keep"][1].add(101)  # somebody adds it back in Radarr
+    assert press(client, 101, "undo").status_code == 409
+    assert 101 in film.carrying("cleanup-keep")
+
+
+def test_a_failed_read_back_after_the_write_leaves_the_change_pending(env, monkeypatch):
+    db, client, film = setup(env)
+    from conftest import token_of
+    from curator.arr import ArrError, TagClient
+
+    token = token_of(client, "film")
+    original = TagClient.tagged
+    calls = {"n": 0}
+
+    def flaky(self):
+        calls["n"] += 1
+        if calls["n"] > 1:  # the press's own read works; every read-back after the write fails
+            raise ArrError("Radarr could not be reached")
+        return original(self)
+
+    monkeypatch.setattr(TagClient, "tagged", flaky)
+    r = press(client, 101, "keep", token=token)
+    monkeypatch.setattr(TagClient, "tagged", original)
+    assert r.status_code == 502
+    assert db.one("SELECT confirmed FROM taps")["confirmed"] == 0
+    assert 101 in film.carrying("cleanup-keep")  # the write itself went through
+    assert press(client, 101, "undo").status_code == 303  # seen within the grace window: ours
+
+
+def test_live_keep_outranks_this_apps_delete_instead(env):
+    _, client, film = setup(env)
+    assert press(client, 105, "delete").status_code == 303
+    film.tags["cleanup-keep"][1].add(105)
+    card = client.get("/").text.split('id="film-105"')[1].split("</li>")[0]
+    assert "which outranks this app" in card and "Marked for deletion" not in card
+    assert 'value="undo"' in card

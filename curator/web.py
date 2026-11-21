@@ -360,6 +360,13 @@ def create_app(
                 "tone": "kept",
                 "buttons": [("undo", "Undo")],
             }
+        if mine == TAG_DELETE and has_keep:
+            # cleanup-keep outranks cleanup-eligible in the engines' plan
+            return {
+                "note": f"Kept: it carries {TAG_KEEP}, which outranks this app's Delete instead.",
+                "tone": "kept",
+                "buttons": [("undo", "Undo Delete instead")],
+            }
         if mine == TAG_DELETE:
             return {
                 "note": "Marked for deletion at the next run.",
