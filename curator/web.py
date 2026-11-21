@@ -407,6 +407,7 @@ def create_app(
     tpl.env.globals["card_state"] = card_state
 
     def live_or_none(library: str) -> dict[str, frozenset[int]] | None:
+        """The decision tags read now, or None when the service is unset or could not be read."""
         try:
             # fresh: one tag read per library per page, and a reload must show a change at once
             return live(library, fresh=True) if clients[library].configured else None
@@ -529,7 +530,8 @@ def create_app(
         c = db.one("SELECT * FROM catalogue WHERE library = ? AND id = ?", library, item_id)
         if not t and not c:
             raise HTTPException(404, "title not found")
-        cat = overlay(allow.decode(c), live_or_none(library)) if c else None
+        now_tags = live_or_none(library) if c else None
+        cat = overlay(allow.decode(c), now_tags) if c else None
         latest = db.latest(library)
         on_list = find(latest[1], item_id) if latest else None
         return page(
@@ -560,6 +562,7 @@ def create_app(
                 item_id,
             ),
             link=service_link(s, library, cat["slug"] if cat else ""),
+            tags_live=now_tags is not None,
         )
 
     # --- allow list ---
@@ -600,6 +603,7 @@ def create_app(
             whys=allow.WHY,
             counts=counts,
             refreshed={lib_: db.get(f"allow_refresh:{lib_}", {}) for lib_ in LIBRARIES},
+            unread=[lib_ for lib_ in LIBRARIES if now_tags[lib_] is None and counts[lib_]],
         )
 
     @app.post("/allow/act")

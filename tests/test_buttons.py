@@ -253,3 +253,37 @@ def test_an_unconfirmed_undo_gives_up_ownership(env):
     assert press(client, 101, "undo").status_code == 502
     assert db.one("SELECT undo_note FROM taps")["undo_note"].startswith("undo sent")
     assert press(client, 101, "undo").status_code == 409  # whatever tag is there is not ours now
+
+
+def test_a_lost_answer_to_the_write_is_read_back_not_abandoned(env, monkeypatch):
+    db, client, film = setup(env)
+    real_open = film.open
+
+    def lose_put_reply(request, timeout=None):
+        response = real_open(request, timeout)
+        if request.get_method() == "PUT":
+            raise TimeoutError("read timed out")  # applied, but the answer never arrived
+        return response
+
+    monkeypatch.setattr(film, "open", lose_put_reply)
+    assert press(client, 105, "delete").status_code == 303  # read back: it landed
+    assert 105 in film.carrying("cleanup-eligible")
+    assert db.one("SELECT tag, confirmed FROM taps")["confirmed"] == 1
+    assert press(client, 105, "undo").status_code == 303
+
+
+def test_a_refused_write_is_a_plain_failure(env, monkeypatch):
+    import io
+    import urllib.error
+
+    db, client, film = setup(env)
+    real_open = film.open
+
+    def refuse_put(request, timeout=None):
+        if request.get_method() == "PUT":
+            raise urllib.error.HTTPError(request.full_url, 500, "boom", None, io.BytesIO())  # type: ignore[arg-type]
+        return real_open(request, timeout)
+
+    monkeypatch.setattr(film, "open", refuse_put)
+    assert press(client, 101, "keep").status_code == 502
+    assert db.one("SELECT count(*) AS n FROM taps")["n"] == 0

@@ -26,6 +26,10 @@ class ArrError(RuntimeError):
     """The service could not be read, or a tag change could not be confirmed."""
 
 
+class Refusal(ArrError):
+    """The service answered with an error status: a definite no, nothing was changed."""
+
+
 class Unconfirmed(ArrError):
     """The service took the change, but the tag had not moved by the last read-back."""
 
@@ -124,11 +128,11 @@ class TagClient:
         try:
             with self._opener.open(request, timeout=timeout or self.timeout) as response:
                 if not 200 <= response.status < 300:
-                    raise ArrError(f"{self.service.name} answered {response.status} to {method}")
+                    raise Refusal(f"{self.service.name} answered {response.status} to {method}")
                 raw = response.read()
         except urllib.error.HTTPError as exc:
             exc.close()  # the error holds the response open and nothing reads its body
-            raise ArrError(f"{self.service.name} answered {exc.code} to {method}") from exc
+            raise Refusal(f"{self.service.name} answered {exc.code} to {method}") from exc
         except (urllib.error.URLError, TimeoutError, OSError) as exc:
             raise ArrError(f"{self.service.name} could not be reached") from exc
         try:
@@ -196,12 +200,17 @@ class TagClient:
         if _int(item_id) is None or item_id <= 0:
             raise ValueError(f"{item_id!r} is not a title id")
         tag_id = self._tag_id(label)
-        self._send(
-            "PUT",
-            self.service.editor_path,
-            {self.service.ids_field: [item_id], "tags": [tag_id], "applyTags": mode},
-        )
-        # From here the service has taken the change, so any failure to see it is "unconfirmed",
+        try:
+            self._send(
+                "PUT",
+                self.service.editor_path,
+                {self.service.ids_field: [item_id], "tags": [tag_id], "applyTags": mode},
+            )
+        except Refusal:
+            raise
+        except ArrError:
+            pass  # a lost or garbled answer: the change may have been made, so read back
+        # From here the change may have been made, so any failure to see it is "unconfirmed",
         # never a plain error: the caller must treat the change as possibly made.
         for attempt in range(self.CONFIRM_READS):
             if attempt:

@@ -149,3 +149,27 @@ def test_allow_list_shows_live_decision_tags_without_a_full_refresh(env):
     assert "Grandma" in client.get("/allow").text  # a reload shows it, no refresh needed
     film.tags["cleanup-keep"][1].discard(304)  # removed in Radarr
     assert "Fog Over Fenwick" not in client.get("/allow").text
+
+
+def test_an_unconfirmed_allow_list_removal_releases_a_this_week_keep(env):
+    _, db, client, film, _ = env
+    publish(client, "film", sample("film-v1"))
+    client.post("/allow/refresh")
+    assert press(client, 101, "keep").status_code == 303
+    film.ignore.add(101)
+    r = client.post("/allow/act", data={"library": "film", "id": "101", "action": "remove"})
+    assert r.status_code == 502
+    film.ignore.clear()
+    note = db.one("SELECT undo_note FROM taps WHERE page = 'week'")["undo_note"]
+    assert note == "removal on the allow list not confirmed"
+    assert press(client, 101, "undo").status_code == 409
+
+
+def test_pages_say_when_live_tags_could_not_be_read(env):
+    _, client, film, _ = refreshed(env)
+    film.fail = OSError("down")
+    page = client.get("/allow").text
+    assert "Radarr could not be read just now." in page
+    assert "Tags as last read" in client.get("/title/film/301").text
+    film.fail = None
+    assert "Tags now" in client.get("/title/film/301").text

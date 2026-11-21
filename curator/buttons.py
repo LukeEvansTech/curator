@@ -204,14 +204,24 @@ def allow_list(db: DB, client: TagClient, library: str, item_id: int, action: st
             allow.set_tags(db, library, item_id, TAG_KEEP, True)
             return Done(f"Added {TAG_KEEP}.", True)
         if not has:
+            _release_keep(db, library, item_id, "tag removed outside this app")
             allow.set_tags(db, library, item_id, TAG_KEEP, False)
             return Done(f"It does not carry {TAG_KEEP}.", False)
-        client.remove(item_id, TAG_KEEP)
+        try:
+            client.remove(item_id, TAG_KEEP)
+        except Unconfirmed:
+            # Possibly gone: no tag that appears later may be taken for a This week Keep.
+            _release_keep(db, library, item_id, "removal on the allow list not confirmed")
+            raise
         _record(db, library, item_id, "allow", "allow-remove", TAG_KEEP, False, None)
-        # A Keep pressed on This week is gone now too; its undo has nothing left to remove.
-        for page in ("week", "allow"):
-            tap = open_tap(db, library, item_id, page)
-            if tap and tap["tag"] == TAG_KEEP:
-                close_tap(db, tap["id"], "removed on the allow list")
+        _release_keep(db, library, item_id, "removed on the allow list")
         allow.set_tags(db, library, item_id, TAG_KEEP, False)
         return Done(f"Removed {TAG_KEEP}.", True)
+
+
+def _release_keep(db: DB, library: str, item_id: int, note: str) -> None:
+    """Close any open tap that owns cleanup-keep on a title: its undo has nothing left to remove."""
+    for page in ("week", "allow"):
+        tap = open_tap(db, library, item_id, page)
+        if tap and tap["tag"] == TAG_KEEP:
+            close_tap(db, tap["id"], note)
