@@ -287,3 +287,20 @@ def test_a_refused_write_is_a_plain_failure(env, monkeypatch):
     monkeypatch.setattr(film, "open", refuse_put)
     assert press(client, 101, "keep").status_code == 502
     assert db.one("SELECT count(*) AS n FROM taps")["n"] == 0
+
+
+def test_any_fresh_read_that_sees_the_tag_gone_ends_undo(env):
+    db, client, film = setup(env)
+    client.post("/allow/refresh")  # the title page reads live tags for titles in the library
+    for observe in ("/allow", "/title/film/101", "refresh"):
+        db.run("DELETE FROM taps")
+        film.tags["cleanup-keep"][1].discard(101)
+        assert press(client, 101, "keep").status_code == 303
+        film.tags["cleanup-keep"][1].discard(101)  # removed in Radarr
+        if observe == "refresh":
+            client.post("/allow/refresh")
+        else:
+            client.get(observe)
+        film.tags["cleanup-keep"][1].add(101)  # added back in Radarr
+        assert press(client, 101, "undo").status_code == 409, observe
+        assert 101 in film.carrying("cleanup-keep")

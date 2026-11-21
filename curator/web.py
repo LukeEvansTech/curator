@@ -408,11 +408,21 @@ def create_app(
 
     def live_or_none(library: str) -> dict[str, frozenset[int]] | None:
         """The decision tags read now, or None when the service is unset or could not be read."""
+        if not clients[library].configured:
+            return None
+        # fresh: one tag read per library per page, and a reload must show a change at once.
+        # Under the lock (when free) the read also closes taps whose tag it shows gone.
+        held = ingest.LOCK.acquire(blocking=False)  # pylint: disable=consider-using-with
         try:
-            # fresh: one tag read per library per page, and a reload must show a change at once
-            return live(library, fresh=True) if clients[library].configured else None
+            tags = live(library, fresh=True)
+            if held:
+                allow.reconcile(db, library, tags)
+            return tags
         except ArrError:
             return None
+        finally:
+            if held:
+                ingest.LOCK.release()
 
     def overlay(row: dict, tags: dict[str, frozenset[int]] | None) -> dict:
         """A cached title with the two decision tags as the service holds them now, so a change

@@ -6,7 +6,7 @@ import datetime as dt
 import json
 import logging
 
-from .arr import TAG_DELETE, ArrError, TagClient
+from .arr import TAG_DELETE, TAGS, ArrError, TagClient
 from .db import DB
 from .ingest import LOCK
 
@@ -60,6 +60,25 @@ def refresh(db: DB, library: str, client: TagClient) -> str:
         return _refresh(db, library, client)
 
 
+def reconcile(db: DB, library: str, live: dict[str, frozenset[int]]) -> int:
+    """Close every open, confirmed tap whose tag a read has just shown to be gone, so Undo can
+    never remove a tag somebody adds back later. Call only under LOCK, with a read taken in it."""
+    closed = 0
+    for tap in db.all(
+        "SELECT id, item_id, tag FROM taps WHERE library = ? AND added = 1 AND confirmed = 1"
+        " AND undone_at IS NULL",
+        library,
+    ):
+        if tap["item_id"] not in live.get(tap["tag"], frozenset()):
+            db.run(
+                "UPDATE taps SET undone_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now'),"
+                " undo_note = 'tag removed outside this app' WHERE id = ? AND undone_at IS NULL",
+                tap["id"],
+            )
+            closed += 1
+    return closed
+
+
 def _refresh(db: DB, library: str, client: TagClient) -> str:
     at = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     try:
@@ -90,6 +109,9 @@ def _refresh(db: DB, library: str, client: TagClient) -> str:
                 for t in titles
             ],
         )
+    reconcile(
+        db, library, {tag: frozenset(x["id"] for x in titles if tag in x["tags"]) for tag in TAGS}
+    )
     message = f"{len(titles):,} titles read"
     db.put(f"allow_refresh:{library}", {"at": at, "ok": True, "message": message})
     return message
