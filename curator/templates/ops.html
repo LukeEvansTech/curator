@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Ops · curator{% endblock %}
+{% block main %}
+<h1>Ops</h1>
+{% for l in libs %}
+<h2 class="rule-head">{{ names[l.library] }} <span class="n">{{ l.count }} document{{ '' if l.count == 1 else 's' }}</span></h2>
+<dl class="facts">
+  <div><dt>Last document</dt><dd>{% if l.last %}{{ l.last.received_at | ago }}{% if l.last.run_key %} · <a href="/run/{{ l.library }}/{{ l.last.run_key | urlencode }}">run</a>{% endif %}{% else %}<span class="bad-text">none yet</span>{% endif %}</dd></div>
+  {% if l.last %}<div><dt>Generated</dt><dd>{{ l.last.generated_at | when }}</dd></div>
+  <div><dt>Version · size</dt><dd class="num">v{{ l.last.version }} · {{ '{:,}'.format(l.last.size) }} bytes</dd></div>{% endif %}
+  <div><dt>Signing key</dt><dd>{{ 'set' if l.key else 'missing: publishes are refused' }}</dd></div>
+  <div><dt>Tags in {{ service[l.library] }} now</dt><dd>{% if l.live is not none %}cleanup-keep {{ l.live['cleanup-keep'] }} · cleanup-eligible {{ l.live['cleanup-eligible'] }}{% else %}<span class="bad-text">{{ l.error }}</span>{% endif %}</dd></div>
+  <div><dt>Tags as last read</dt><dd>{% if l.held %}{% for k, n in l.held.items() %}{{ k }} {{ n }}{{ ' · ' if not loop.last }}{% endfor %}{% else %}none{% endif %}</dd></div>
+  <div><dt>Allow list read</dt><dd>{% if l.refresh %}{{ l.refresh.at | ago }}: <span class="{{ '' if l.refresh.ok else 'bad-text' }}">{{ l.refresh.message }}</span>{% else %}never{% endif %}</dd></div>
+</dl>
+{% endfor %}
+<form class="stack" method="post" action="/allow/refresh"><button type="submit" {{ 'disabled' if running }}>{{ 'Reading the allow list…' if running else 'Read the allow list now' }}</button></form>
+<p class="meta">The allow list is read on its own schedule too (cron <span class="num">{{ schedule }}</span>).{% if not public_url %} No public URL is set.{% endif %}</p>
+
+<h2 class="rule-head">Refused publishes <span class="n">{{ rejects | length }}</span></h2>
+{% if rejects %}
+<ul class="rows">{% for r in rejects %}<li><div class="top-line"><b>{{ r.status }} · {{ r.library }}</b><span class="meta">{{ r.at | when }}</span></div><p class="sub">{{ r.reason }} · {{ '{:,}'.format(r.size) }} bytes</p></li>{% endfor %}</ul>
+{% else %}<div class="empty"><p>No publish has been refused.</p></div>{% endif %}
+{% endblock %}

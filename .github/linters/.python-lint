@@ -1,0 +1,43 @@
+# Pylint config for curator. Read by super-linter (PYTHON_PYLINT_CONFIG_FILE defaults to this path).
+[MASTER]
+init-hook='import sys; sys.path.insert(0, "."); sys.path.insert(0, "tests")'
+
+[FORMAT]
+max-line-length = 100
+
+[MESSAGES CONTROL]
+# Disabled with rationale:
+#   C0103              invalid-name: short names (s, db, r, c) for the settings, database, row and
+#                      connection objects every function passes around.
+#   C0114/C0115/C0116  missing docstrings: pedantic for route handlers and tests.
+#   C0301              line-too-long: Black/Ruff-format own code width.
+#   C0411              wrong-import-order: isort owns import order.
+#   C0415              import-outside-toplevel: uvicorn and the scheduler load only on the code
+#                      path that needs them, so tests start fast.
+#   E0401              import-error: super-linter's container doesn't install requirements.txt.
+#   R0801              duplicate-code: disabled fleet-wide.
+#   R0902/R0903        too-many/few attributes or public methods: dataclasses and test fakes.
+#   R0911-R0917        too-many returns, branches, locals, statements, arguments: the button
+#                      rules and route functions are linear rule lists, clearer unsplit.
+#   W0621              redefined-outer-name: pytest fixtures.
+#   W0622              redefined-builtin: `id` is a form field name in the routes.
+disable =
+    C0103,
+    C0114,
+    C0115,
+    C0116,
+    C0301,
+    C0411,
+    C0415,
+    E0401,
+    R0801,
+    R0902,
+    R0903,
+    R0911,
+    R0912,
+    R0913,
+    R0914,
+    R0915,
+    R0917,
+    W0621,
+    W0622,

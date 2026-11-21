@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Allow list · curator{% endblock %}
+{% block main %}
+<h1>Allow list</h1>
+<p class="meta">Every title the cleanup will not touch, as {{ service.film }} and {{ service.tv }} hold it.
+{% for k, r in refreshed.items() %}{{ names[k] }} read {{ r.at | ago if r.at else 'never' }}{% if r and not r.ok %} (<span class="bad-text">failed: {{ r.message }}</span>){% endif %}{{ '; ' if not loop.last else '.' }}{% endfor %}</p>
+<form class="filters" method="get" action="/allow">
+  <label>Search<input type="search" name="q" value="{{ q }}" placeholder="Title"></label>
+  <label>Library
+    <select name="library"><option value="">Both</option>{% for k, n in names.items() %}<option value="{{ k }}" {{ 'selected' if library == k }}>{{ n }}</option>{% endfor %}</select>
+  </label>
+  <label>Why
+    <select name="why"><option value="">Any reason</option>{% for k, n in whys.items() %}<option value="{{ k }}" {{ 'selected' if why == k }}>{{ n }}</option>{% endfor %}</select>
+  </label>
+  <label>Show
+    <select name="show"><option value="">Allow list only</option><option value="all" {{ 'selected' if show == 'all' }}>Whole library</option></select>
+  </label>
+  <label>&nbsp;<button type="submit">Filter</button></label>
+</form>
+{% set back = '/allow?' ~ ({'q': q, 'library': library, 'why': why, 'show': show} | urlencode) %}
+<p class="meta">{{ '{:,}'.format(total) }} title{{ '' if total == 1 else 's' }}{% if total > cap %}, the first {{ cap }} shown; narrow the search{% endif %}.</p>
+{% if rows %}
+<ul class="rows">
+  {% for r in rows %}
+  <li>
+    <div class="top-line"><a href="/title/{{ r.library }}/{{ r.id }}">{{ r.title }}{% if r.year %} ({{ r.year }}){% endif %}</a><span class="meta">{{ names[r.library] }}</span></div>
+    <p class="sub">{{ r.size_gb | gb }}{% if r.imdb_score %} · IMDb {{ '%.1f' | format(r.imdb_score) }}{% if r.imdb_votes %} on {{ '{:,}'.format(r.imdb_votes) }} votes{% endif %}{% endif %}</p>
+    {% if r.why %}<ul class="chips">{% for w in r.why %}<li>{{ whys[w] }}</li>{% endfor %}</ul>{% endif %}
+    <form class="stack" method="post" action="/allow/act">
+      <input type="hidden" name="library" value="{{ r.library }}">
+      <input type="hidden" name="id" value="{{ r.id }}">
+      <input type="hidden" name="back" value="{{ back }}">
+      {% if 'cleanup-keep' in r.tags %}
+      <input type="hidden" name="action" value="remove"><button type="submit" class="undo">Remove cleanup-keep</button>
+      {% else %}
+      <input type="hidden" name="action" value="add"><button type="submit" class="keep">Add cleanup-keep</button>
+      {% endif %}
+    </form>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<div class="empty"><p>{% if counts.film or counts.tv %}Nothing matches. Clear the search, or show the whole library to add a title.{% else %}The libraries have not been read yet. Read them now from Ops.{% endif %}</p></div>
+{% endif %}
+<form class="stack" method="post" action="/allow/refresh"><input type="hidden" name="back" value="/allow"><button type="submit">Read the allow list again</button></form>
+{% endblock %}

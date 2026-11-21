@@ -1,0 +1,23 @@
+{# One title on This week. `v` is the library's view, `item` the entry, `section` its list. #}
+{% set st = card_state(v, item, section) %}
+<li class="card" id="{{ v.library }}-{{ item.id }}">
+  <h3><a href="/title/{{ v.library }}/{{ item.id }}">{{ item.title }}</a>{% if item.year %} <span class="year">({{ item.year }})</span>{% endif %}</h3>
+  {% set line = item | facts %}{% if line %}<p class="line">{{ line }}</p>{% endif %}
+  {% if section == 'later' and item.due_at %}<p class="line">Due {{ item.due_at | day }}</p>{% endif %}
+  {% if item.reason %}<p class="reason">{% if byline.get(item.by) %}<span class="who">{{ byline.get(item.by) }}:</span> {% endif %}{{ item.reason }}</p>{% endif %}
+  {% if item.overview %}<details class="syn"><summary>Synopsis</summary><p>{{ item.overview }}</p></details>{% endif %}
+  {% if st.note %}<p class="state {{ st.tone }}">{{ st.note }}</p>{% endif %}
+  {% if st.buttons %}
+  <div class="btns">
+    {% for action, label in st.buttons %}
+    <form method="post" action="/act">
+      <input type="hidden" name="library" value="{{ v.library }}">
+      <input type="hidden" name="id" value="{{ item.id }}">
+      <input type="hidden" name="token" value="{{ v.token }}">
+      <input type="hidden" name="action" value="{{ action }}">
+      <button type="submit" class="{{ action }}">{{ label }}</button>
+    </form>
+    {% endfor %}
+  </div>
+  {% endif %}
+</li>

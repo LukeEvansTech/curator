@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Runs · curator{% endblock %}
+{% block main %}
+<h1>Runs</h1>
+<form class="filters" method="get" action="/runs">
+  <label>Library
+    <select name="library">
+      <option value="">Both</option>
+      {% for k, n in names.items() %}<option value="{{ k }}" {{ 'selected' if library == k }}>{{ n }}</option>{% endfor %}
+    </select>
+  </label>
+  <label>&nbsp;<button type="submit">Show</button></label>
+</form>
+{% if runs %}
+<ul class="rows">
+  {% for r in runs %}
+  <li>
+    <div class="top-line">
+      <a href="/run/{{ r.library }}/{{ r.run_key | urlencode }}"><b>{{ names[r.library] }}</b> · {{ r.generated_at | when }}</a>
+      <span class="num {{ 'going-text' if r.going_n }}">{{ r.going_n }} going</span>
+    </div>
+    <p class="sub">{{ 'Act' if r.mode == 'act' else 'Dry run' }}{% if r.blocks != '[]' %} · <span class="bad-text">blocked</span>{% endif %}
+      · {{ r.later_n }} later · {{ r.kept_n }} kept · {{ r.needs_n }} need you · {{ r.deleted_n }} {{ 'deleted' if r.mode == 'act' else 'would have gone' }}
+      {% if r.judge_status %} · judge {{ r.judge_status }}{% endif %}
+      {% if r.tokens_in is not none or r.tokens_out is not none %} · {{ cost(r.tokens_in, r.tokens_out) }}{% endif %}</p>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<div class="empty"><p>No run has published a document yet.</p></div>
+{% endif %}
+{% endblock %}
