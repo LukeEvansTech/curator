@@ -1,6 +1,10 @@
 {% extends "base.html" %}
 {% block title %}This week · curator{% endblock %}
 {% block main %}
+{# Films run long on a phone, so the way to the other library stays in reach. #}
+<nav class="jump" aria-label="Libraries">
+  {% for v in views %}{% set n = v.doc.going | length if v.doc else 0 %}<a class="jump-link{{ '' if n else ' none' }}" href="#{{ v.library }}" aria-label="{{ names[v.library] }}, {{ n }} {{ 'going' if v.doc and v.doc.mode == 'act' else 'would go' }}">{{ names[v.library] }}<b class="jump-n">{{ n }}</b></a>{% endfor %}
+</nav>
 {% for v in views %}
 <section id="{{ v.library }}">
   <h2 class="lib">{{ names[v.library] }}</h2>
