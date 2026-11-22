@@ -38,7 +38,8 @@ numbers line up. Scripts the bundled subsets lack fall back to the system face.
 - **Card**: the poster, then the title and year, the size, plays and origin on one line, and the
   rating as a pill that opens IMDb. Under them the reason in a panel with its author, a collapsed
   synopsis, the tag state, then buttons at least 48px tall. On a phone the reason runs the full
-  width under the poster; from 560px the poster takes the left edge and cards sit two across.
+  width under the poster; from 560px the poster takes the left edge. Cards sit two across once
+  two 440px columns fit, at about 930px.
 - **Poster**: 2:3, always from `/poster/…`, lazy. It opens IMDb, as the pill does, so it is kept
   out of the tab order. A title without one shows a clapperboard.
 - **Sections**: Going and Needs you open; Later, Being kept for a year and Deleted collapsed
