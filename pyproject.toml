@@ -1,6 +1,6 @@
 [project]
 name = "curator"
-version = "0.1.1"
+version = "0.2.0"
 description = "Review pages for the weekly Radarr and Sonarr cleanup: every run, every verdict, one-tap overrides"
 requires-python = ">=3.12"
 
