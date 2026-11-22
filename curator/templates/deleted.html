@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Deleted · curator{% endblock %}
+{% from "_bits.html" import poster %}
 {% block main %}
 <h1>Deleted</h1>
 <p class="meta">What went and when, largest first. {{ deleted_n }} deleted in all, {{ total | gb }}. A deleted file stays in the {{ service.film }} or {{ service.tv }} recycle bin for {{ recycle_days }} days.</p>
@@ -10,12 +11,16 @@
 {% if rows %}
 <ul class="rows">
   {% for a in rows %}
-  <li>
+  {% set out = imdb_link(links[a.library].get(a.item_id, ''), a.title, a.year) %}
+  <li class="pictured">
+    {{ poster(a.library, a.item_id, out) }}
+    <div>
     <div class="top-line"><a href="/title/{{ a.library }}/{{ a.item_id }}">{{ a.title }}{% if a.year %} ({{ a.year }}){% endif %}</a><span class="num">{{ a.size_gb | gb }}</span></div>
-    <p class="sub">{{ names[a.library] }} · {{ a.at | when }}{% if a.reason %} · {{ a.reason }}{% endif %}</p>
+    <p class="sub">{{ names[a.library] }} · {{ a.at | when }} · <a href="{{ out }}" target="_blank" rel="noopener noreferrer">IMDb</a>{% if a.reason %} · {{ a.reason }}{% endif %}</p>
     {% if a.kind != 'deleted' %}<p class="sub">Dry run: nothing was deleted.</p>
     {% elif a.in_bin %}<p class="sub keep-text">In the recycle bin until {{ a.bin_until | day }}. To restore: move the files back from the recycle bin, then re-add {{ a.title }}{% if a.year %} ({{ a.year }}){% endif %} in {{ service[a.library] }} and give it cleanup-keep so the next run leaves it.</p>
     {% else %}<p class="sub">Past the recycle bin since {{ a.bin_until | day }}: restoring means adding it in {{ service[a.library] }} and downloading it again.</p>{% endif %}
+    </div>
   </li>
   {% endfor %}
 </ul>

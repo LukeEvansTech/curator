@@ -23,9 +23,10 @@ HOSTILE = '<script>alert(1)</script>"><img src=x onerror=alert(2)> & more'
 
 
 class _Response(io.BytesIO):
-    def __init__(self, body: bytes, status: int = 200):
+    def __init__(self, body: bytes, status: int = 200, headers: dict | None = None):
         super().__init__(body)
         self.status = status
+        self.headers = headers or {}
 
     def __enter__(self):
         return self
@@ -46,6 +47,8 @@ class FakeArr:
         for label, ids in (tags or {}).items():
             self.tags[label] = (len(self.tags) + 1, set(ids))
         self.titles = list(titles)
+        self.posters: dict[int, bytes] = {}  # what the service holds as each title's poster
+        self.cut_short = False  # a poster reply that ends before the length it declared
         self.requests: list[tuple[str, str, Any]] = []
         self.fail: Exception | None = None
         self.ignore: set[int] = set()  # ids whose tag the editor accepts and never applies
@@ -66,6 +69,7 @@ class FakeArr:
             "tags": tag_ids,
             "genres": item.get("genres", []),
             "titleSlug": item.get("slug", f"slug-{item['id']}"),
+            "imdbId": item.get("imdb"),
         }
         if self.ids_field == "movieIds":
             out.update(ratings={"imdb": rating}, sizeOnDisk=item.get("bytes", 5e9))
@@ -95,6 +99,12 @@ class FakeArr:
                     [{"id": tid, "label": label} for label, (tid, _) in self.tags.items()]
                 ).encode()
             )
+        if method == "GET" and path.startswith("/api/v3/mediacover/"):
+            item_id = int(path.split("/")[4])
+            if item_id in self.posters:
+                body = self.posters[item_id]
+                sent = body[: len(body) // 2] if self.cut_short else body
+                return _Response(sent, headers={"Content-Length": str(len(body))})
         if method == "GET" and path == self.items_path:
             return _Response(json.dumps([self._record(t) for t in self.titles]).encode())
         if method == "POST" and path == "/api/v3/tag":
@@ -144,7 +154,14 @@ def signed(library: str, payload: dict, key: str | None = None) -> tuple[bytes, 
 
 
 FILM_TITLES = [
-    {"id": 101, "title": "Mega Gator vs. Lava Bear", "year": 2023, "score": 3.1, "votes": 412},
+    {
+        "id": 101,
+        "title": "Mega Gator vs. Lava Bear",
+        "year": 2023,
+        "score": 3.1,
+        "votes": 412,
+        "imdb": "tt0000101",
+    },
     {"id": 105, "title": "Ten Brides in a Lighthouse", "year": 1984, "score": 6.1, "votes": 4200},
     {"id": 301, "title": "The Great Kettle Heist", "year": 1999, "score": 7.4, "votes": 88000},
     {"id": 302, "title": "Orbit of Small Hours", "year": 2011, "score": 6.9, "votes": 12000},

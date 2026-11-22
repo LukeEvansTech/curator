@@ -109,6 +109,11 @@ def _refresh(db: DB, library: str, client: TagClient) -> str:
                 for t in titles
             ],
         )
+        c.executemany(
+            "INSERT INTO links (library, id, imdb_id) VALUES (?, ?, ?)"
+            " ON CONFLICT (library, id) DO UPDATE SET imdb_id = excluded.imdb_id",
+            [(library, t["id"], t["imdb_id"]) for t in titles if t["imdb_id"]],
+        )
     reconcile(
         db, library, {tag: frozenset(x["id"] for x in titles if tag in x["tags"]) for tag in TAGS}
     )

@@ -9,14 +9,22 @@
   {% else %}
   {% set doc = v.doc %}
   {% set rehearsal = doc.mode != 'act' %}
-  <p class="meta">Published {{ doc.generated_at | when }} · at most {{ doc.cap }} a run · <a href="/run/{{ v.library }}/{{ v.run_key | urlencode }}">this run</a></p>
-  <ul class="totals">
-    <li class="going"><b>{{ doc.going | length }}</b>{{ 'would go' if rehearsal else 'going' }} · {{ doc.going | total_gb }}</li>
-    <li><b>{{ doc.later | length }}</b>later</li>
-    <li><b>{{ doc.kept | length }}</b>kept for a year</li>
-    <li><b>{{ doc.needs_you | length }}</b>need you</li>
-    <li><b>{{ doc.deleted | length }}</b>{{ 'would have gone' if rehearsal else 'deleted' }} last run</li>
-  </ul>
+  <p class="meta">Published {{ doc.generated_at | when }} · <a href="/run/{{ v.library }}/{{ v.run_key | urlencode }}">this run</a></p>
+  <div class="summary">
+    <div class="lead{{ '' if doc.going else ' clear' }}">
+      <b class="count">{{ doc.going | length }}</b>
+      <div>
+        <p class="what">{{ 'would go' if rehearsal else 'going' }} on {{ doc.next_run_at | day }}</p>
+        <p class="meta">{{ doc.going | total_gb }} · at most {{ doc.cap }} a run</p>
+      </div>
+    </div>
+    <ul class="stats">
+      <li><b>{{ doc.later | length }}</b>later</li>
+      <li><b>{{ doc.kept | length }}</b>kept for a year</li>
+      <li><b>{{ doc.needs_you | length }}</b>need you</li>
+      <li><b>{{ doc.deleted | length }}</b>{{ 'would have gone' if rehearsal else 'deleted' }} last run</li>
+    </ul>
+  </div>
   {% if rehearsal %}<div class="banner"><b>Dry run.</b> Nothing is deleted yet; the buttons still set real tags.</div>{% endif %}
   {% if v.stale %}<div class="banner bad"><b>This list is old.</b> No document has arrived since {{ doc.generated_at | when }}. Check the run on Ops.</div>{% endif %}
   {% if doc.blocks %}<div class="banner"><b>The last run was blocked, so it deleted nothing.</b><ul>{% for b in doc.blocks %}<li>{{ b }}</li>{% endfor %}</ul></div>{% endif %}

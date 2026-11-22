@@ -1,12 +1,17 @@
 {% extends "base.html" %}
 {% block title %}{{ heading }} · curator{% endblock %}
+{% from "_bits.html" import poster, facts_row %}
 {% block main %}
-<h1>{{ heading }}{% if year %} <span class="meta">({{ year }})</span>{% endif %}</h1>
-<p class="meta">{{ names[library] }} · {{ service[library] }} id {{ item_id }}{% if on_list %} · on this week's list ({{ 'kept for a year' if on_list == 'kept' else on_list | replace('_', ' ') }}){% endif %}</p>
-{% if t %}
-{% set line = t | facts %}{% if line %}<p class="meta">{{ line }}</p>{% endif %}
-{% if t.overview %}<p>{{ t.overview }}</p>{% endif %}
-{% endif %}
+<div class="title-head">
+  {{ poster(library, item_id, out, wide=true) }}
+  <div>
+    <h1>{{ heading }}{% if year %} <span class="year">({{ year }})</span>{% endif %}</h1>
+    <p class="meta">{{ names[library] }} · {{ service[library] }} id {{ item_id }}{% if on_list %} · on this week's list ({{ 'kept for a year' if on_list == 'kept' else on_list | replace('_', ' ') }}){% endif %}</p>
+    {{ facts_row(t or cat, out, heading) }}
+    {% if link %}<p class="links"><a class="button out" href="{{ link }}" target="_blank" rel="noopener noreferrer">Open in {{ service[library] }}</a></p>{% endif %}
+  </div>
+  {% if t and t.overview %}<p class="overview">{{ t.overview }}</p>{% endif %}
+</div>
 <dl class="facts">
   {% if t %}<div><dt>First listed</dt><dd>{{ t.first_seen | when }}</dd></div>
   <div><dt>Last listed</dt><dd>{{ t.last_seen | when }}</dd></div>{% endif %}
@@ -15,7 +20,6 @@
   {% if cat.genres %}<div><dt>Genres</dt><dd>{{ cat.genres | join(', ') }}</dd></div>{% endif %}
   {% else %}<div><dt>Library</dt><dd>Not in {{ service[library] }} as last read</dd></div>{% endif %}
 </dl>
-{% if link %}<p class="stack"><a class="button" href="{{ link }}" rel="noreferrer">Open in {{ service[library] }}</a></p>{% endif %}
 
 <h2 class="rule-head">Verdicts <span class="n">{{ verdicts | length }}</span></h2>
 {% if verdicts %}

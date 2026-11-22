@@ -12,6 +12,10 @@ it; this file holds what the code does not say.
 - Layout: `document.py` (validation, pure), `ingest.py` (document into tables), `buttons.py` (the
   only tag writes), `arr.py` (the only network code), `allow.py` (allow list), `web.py` and
   `templates/` (pages), `db.py` (schema).
+- Posters: `/poster/{library}/{id}` fetches a title's poster from its service once and keeps it
+  under `posters/` in the data directory, so a title that has left the library still shows one.
+  The IMDb ID comes from the library read into `links`, which is never cleared for the same
+  reason. `DESIGN.md` describes the look.
 - Deployed on the home cluster as `curator`, which alerts on
   `curator_last_document_timestamp_seconds` from `GET /metrics`. The cluster runs the image of the
   latest `v*` tag: a merge to `main` deploys nothing until a tag is pushed and the pin PR merges.
@@ -30,7 +34,9 @@ it; this file holds what the code does not say.
   is left alone and never becomes undoable.
 - **All document and service text is untrusted.** Autoescape stays on; never `| safe`,
   `Markup` or a raw string into HTML. The pages run no script and load nothing from elsewhere
-  (the content security policy in `web.py` enforces it).
+  (the content security policy in `web.py` enforces it). A poster is served from this app's own
+  address, only when it is small and starts with an image's bytes; the service's word for its
+  type is not used. IMDb is a link, never a load, and carries no referrer.
 - **Publish checks run in this order:** known library, key configured, size, signature
   (constant time, before parsing), then validation. Every accepted document is kept as received;
   an older one never replaces a newer one.

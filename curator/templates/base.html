@@ -3,24 +3,25 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#141414">
+  <meta name="theme-color" content="#000000">
   <meta name="robots" content="noindex">
   <title>{% block title %}curator{% endblock %}</title>
-  <link rel="preload" href="/static/fonts/Archivo-VF.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/static/fonts/Inter-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/static/app.css?v={{ version | urlencode }}">
 </head>
 <body>
-  <header class="top">
+  <a class="skip" href="#main">Skip to the list</a>
+  <header class="bar">
     <a class="mark" href="/">curator<span>library cleanup</span></a>
+    <nav class="tabs" aria-label="Pages">
+      <a class="week" href="/" {% if nav == 'week' %}aria-current="page"{% endif %}>This week</a>
+      <a class="runs" href="/runs" {% if nav == 'runs' %}aria-current="page"{% endif %}>Runs</a>
+      <a class="allow" href="/allow" {% if nav == 'allow' %}aria-current="page"{% endif %}>Allow list</a>
+      <a class="deleted" href="/deleted" {% if nav == 'deleted' %}aria-current="page"{% endif %}>Deleted</a>
+      <a class="ops" href="/ops" {% if nav == 'ops' %}aria-current="page"{% endif %}>Ops</a>
+    </nav>
   </header>
-  <nav class="tabs" aria-label="Pages">
-    <a href="/" {% if nav == 'week' %}aria-current="page"{% endif %}>This week</a>
-    <a href="/runs" {% if nav == 'runs' %}aria-current="page"{% endif %}>Runs</a>
-    <a href="/allow" {% if nav == 'allow' %}aria-current="page"{% endif %}>Allow list</a>
-    <a href="/deleted" {% if nav == 'deleted' %}aria-current="page"{% endif %}>Deleted</a>
-    <a href="/ops" {% if nav == 'ops' %}aria-current="page"{% endif %}>Ops</a>
-  </nav>
-  <main>{% block main %}{% endblock %}</main>
+  <main id="main">{% block main %}{% endblock %}</main>
   <footer class="foot">curator {{ version }}. Keep and Keep forever add cleanup-keep; Delete instead adds cleanup-eligible. A title the judge keeps is held for a year, then judged again. The next run reads the tags.</footer>
 </body>
 </html>
