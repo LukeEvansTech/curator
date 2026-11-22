@@ -47,6 +47,27 @@ def test_a_kept_poster_outlives_the_title(env):
     assert again.status_code == 200 and again.content == JPEG
 
 
+def test_a_title_gone_from_the_service_shows_the_width_that_was_kept(env):
+    _, _, client, film, _ = env
+    film.posters[101] = JPEG
+    client.get("/poster/film/101")  # the list's small one, while the film was there
+    del film.posters[101]
+    large = client.get("/poster/film/101?w=500", follow_redirects=False)
+    assert large.status_code == 200 and large.content == JPEG
+    assert large.headers["cache-control"] == "private, max-age=3600"
+
+
+def test_a_poster_cut_short_on_the_way_is_not_kept(env):
+    s, _, client, film, _ = env
+    film.posters[101] = JPEG
+    film.cut_short = True
+    r = client.get("/poster/film/101", follow_redirects=False)
+    assert r.status_code == 302 and r.headers["cache-control"] == "no-store"
+    assert not (s.data_dir / "posters").exists()
+    film.cut_short = False
+    assert client.get("/poster/film/101").content == JPEG
+
+
 def test_the_two_widths_are_kept_apart_and_no_other_is_asked_for(env):
     s, _, client, film, _ = env
     film.posters[101] = PNG

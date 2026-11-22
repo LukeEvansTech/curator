@@ -165,7 +165,15 @@ class TagClient:
                         f"{self.service.name} answered {response.status} to {method}",
                         response.status,
                     )
-                return response.read(limit + 1) if limit else response.read()
+                if not limit:
+                    return response.read()
+                # A sized read does not raise when the reply ends early, so the length the
+                # service declared is checked here: half a poster must never be kept.
+                declared = str(getattr(response, "headers", {}).get("Content-Length") or "")
+                raw = response.read(limit + 1)
+                if declared.isdigit() and len(raw) < min(int(declared), limit + 1):
+                    raise http.client.IncompleteRead(raw)
+                return raw
         except urllib.error.HTTPError as exc:
             exc.close()  # the error holds the response open and nothing reads its body
             raise Refusal(f"{self.service.name} answered {exc.code} to {method}", exc.code) from exc

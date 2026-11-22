@@ -650,28 +650,33 @@ def create_app(
         if library not in LIBRARIES or not 0 < item_id < 10**15:
             raise HTTPException(404, "poster not found")
         width = w if w in POSTER_WIDTHS else POSTER_WIDTHS[0]
-        kept = s.data_dir / "posters" / library / f"{item_id}-{width}"
-        try:
-            data = kept.read_bytes()
-        except OSError:
-            data = b""
-        kind = image_type(data[:16])
+        folder = s.data_dir / "posters" / library
+
+        def kept(size: int) -> tuple[bytes, str]:
+            try:
+                data = (folder / f"{item_id}-{size}").read_bytes()
+            except OSError:
+                data = b""
+            return data, image_type(data[:16])
+
+        data, kind = kept(width)
+        cache = f"private, max-age={POSTER_SECONDS}"
         if not kind:
             wait = NO_POSTER_SECONDS
             try:
                 found = clients[library].poster(item_id, width)
             except ArrError:
                 found, wait = None, 0  # no answer is not "no poster": ask again on the next view
-            if found is None:
+            if found:
+                data, kind = found
+                keep_file(folder / f"{item_id}-{width}", data)
+            else:
+                # Gone from the service, or no answer: the other width, kept earlier, still shows it.
                 cache = f"private, max-age={wait}" if wait else "no-store"
-                return RedirectResponse(
-                    NO_POSTER, status_code=302, headers={"Cache-Control": cache}
-                )
-            data, kind = found
-            keep_file(kept, data)
-        return Response(
-            data, media_type=kind, headers={"Cache-Control": f"private, max-age={POSTER_SECONDS}"}
-        )
+                data, kind = next((p for p in map(kept, POSTER_WIDTHS) if p[1]), (b"", ""))
+        if not kind:
+            return RedirectResponse(NO_POSTER, status_code=302, headers={"Cache-Control": cache})
+        return Response(data, media_type=kind, headers={"Cache-Control": cache})
 
     # --- allow list ---
     @app.get("/allow", response_class=HTMLResponse)

@@ -23,9 +23,10 @@ HOSTILE = '<script>alert(1)</script>"><img src=x onerror=alert(2)> & more'
 
 
 class _Response(io.BytesIO):
-    def __init__(self, body: bytes, status: int = 200):
+    def __init__(self, body: bytes, status: int = 200, headers: dict | None = None):
         super().__init__(body)
         self.status = status
+        self.headers = headers or {}
 
     def __enter__(self):
         return self
@@ -47,6 +48,7 @@ class FakeArr:
             self.tags[label] = (len(self.tags) + 1, set(ids))
         self.titles = list(titles)
         self.posters: dict[int, bytes] = {}  # what the service holds as each title's poster
+        self.cut_short = False  # a poster reply that ends before the length it declared
         self.requests: list[tuple[str, str, Any]] = []
         self.fail: Exception | None = None
         self.ignore: set[int] = set()  # ids whose tag the editor accepts and never applies
@@ -100,7 +102,9 @@ class FakeArr:
         if method == "GET" and path.startswith("/api/v3/mediacover/"):
             item_id = int(path.split("/")[4])
             if item_id in self.posters:
-                return _Response(self.posters[item_id])
+                body = self.posters[item_id]
+                sent = body[: len(body) // 2] if self.cut_short else body
+                return _Response(sent, headers={"Content-Length": str(len(body))})
         if method == "GET" and path == self.items_path:
             return _Response(json.dumps([self._record(t) for t in self.titles]).encode())
         if method == "POST" and path == "/api/v3/tag":
