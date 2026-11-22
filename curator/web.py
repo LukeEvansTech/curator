@@ -664,7 +664,9 @@ def create_app(
                 found, wait = None, 0  # no answer is not "no poster": ask again on the next view
             if found is None:
                 cache = f"private, max-age={wait}" if wait else "no-store"
-                return RedirectResponse(NO_POSTER, status_code=302, headers={"Cache-Control": cache})
+                return RedirectResponse(
+                    NO_POSTER, status_code=302, headers={"Cache-Control": cache}
+                )
             data, kind = found
             keep_file(kept, data)
         return Response(

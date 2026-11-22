@@ -14,7 +14,7 @@ it; this file holds what the code does not say.
   `templates/` (pages), `db.py` (schema).
 - Posters: `/poster/{library}/{id}` fetches a title's poster from its service once and keeps it
   under `posters/` in the data directory, so a title that has left the library still shows one.
-  The IMDb id comes from the library read into `links`, which is never cleared for the same
+  The IMDb ID comes from the library read into `links`, which is never cleared for the same
   reason. `DESIGN.md` describes the look.
 - Deployed on the home cluster as `curator`, which alerts on
   `curator_last_document_timestamp_seconds` from `GET /metrics`. The cluster runs the image of the
