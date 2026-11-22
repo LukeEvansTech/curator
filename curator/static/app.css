@@ -52,6 +52,10 @@
   --ease: cubic-bezier(0.2, 0, 0, 1);
   --sans: inter, -apple-system, blinkmacsystemfont, "Segoe UI", sans-serif;
 
+  /* where a sticky strip rests, and how far a jump target clears it */
+  --bar: env(safe-area-inset-top, 0px);
+  --stuck: calc(var(--bar) + 68px);
+
   color-scheme: dark;
 }
 
@@ -221,6 +225,57 @@ main {
   max-width: var(--wide);
   margin: 0 auto;
   padding: 0 var(--pad) 40px;
+}
+
+main > section {
+  scroll-margin-top: var(--stuck);
+}
+
+/* ---------- from one library to the other ---------- */
+.jump {
+  position: sticky;
+  top: var(--bar);
+  z-index: 5;
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  gap: 8px;
+  margin: 4px calc(-1 * var(--pad)) 0;
+  padding: 8px var(--pad);
+  background: var(--bg);
+}
+
+.jump a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--pill);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  transition:
+    background-color 150ms var(--ease),
+    border-color 150ms var(--ease);
+}
+
+.jump a:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-2);
+}
+
+.jump b {
+  color: var(--go);
+  font-variant-numeric: tabular-nums;
+}
+
+.jump .none b {
+  color: var(--text-2);
 }
 
 .foot {
@@ -509,7 +564,7 @@ details[open] > summary.rule-head::after {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--surface);
-  scroll-margin-top: 16px;
+  scroll-margin-top: var(--stuck);
 }
 
 .card:target {
@@ -1006,6 +1061,11 @@ pre.digest {
 }
 
 @media (width >= 760px) {
+  :root {
+    /* under the sticky top bar: 44px of tabs, 10px above and below, 1px of rule */
+    --bar: 65px;
+  }
+
   body {
     padding-bottom: 0;
   }
@@ -1045,10 +1105,6 @@ pre.digest {
   .tabs a:hover,
   .tabs a[aria-current="page"] {
     background: var(--surface-2);
-  }
-
-  .card {
-    scroll-margin-top: 84px;
   }
 
   .rows > .pictured:has(> form) {

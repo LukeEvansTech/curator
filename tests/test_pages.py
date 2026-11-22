@@ -194,3 +194,29 @@ def test_wording_says_the_judge_keeps_for_a_year(env):
     title = client.get("/title/film/105").text
     assert "on this week's list (kept for a year)" in title
     assert "Kept for a year" in client.get("/run/film/run-20261115T080000-f1lm01").text
+
+
+def test_this_week_opens_with_a_way_to_each_library(env):
+    _, _, client, *_ = env
+    assert 'href="#film"' in client.get("/").text  # there before any document has arrived
+    load(client)
+    strip = client.get("/").text.split('<nav class="jump"')[1].split("</nav>")[0]
+    for library, name in (("film", "Films"), ("tv", "TV")):
+        going = len(sample("film-v1" if library == "film" else "tv-v2")["going"])
+        assert f'href="#{library}"' in strip and f"{name}<b>{going}</b>" in strip
+
+
+def test_the_home_screen_icon_and_manifest_come_from_this_app(env):
+    _, _, client, *_ = env
+    r = client.get("/")
+    assert 'rel="manifest" href="/static/manifest.webmanifest"' in r.text
+    assert 'rel="apple-touch-icon" href="/static/apple-touch-icon.png"' in r.text
+    assert "manifest-src 'self'" in r.headers["content-security-policy"]
+    manifest = client.get("/static/manifest.webmanifest").json()
+    assert (manifest["display"], manifest["start_url"]) == ("standalone", "/")
+    for src in [i["src"] for i in manifest["icons"]] + [
+        "/static/apple-touch-icon.png",
+        "/static/icon.svg",
+    ]:
+        icon = client.get(src)
+        assert icon.status_code == 200 and icon.headers["content-type"].startswith("image/"), src

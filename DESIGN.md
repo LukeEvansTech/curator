@@ -33,6 +33,8 @@ numbers line up. Scripts the bundled subsets lack fall back to the system face.
 
 - **Tabs**: on a phone, a bar fixed to the bottom, five icons with labels, the current one white
   with a red icon. From 760px, pills in a sticky top bar beside the name.
+- **Jump strip**: on This week, Films and TV as two pills with the count going in each, stuck to
+  the top while the page scrolls, because the second library sits below every card of the first.
 - **Summary**: the one number a person acts on leads, large and red, with the day and the size
   beside it; later, kept, needs you and last run sit under it as small figures.
 - **Card**: the poster, then the title and year, the size, plays and origin on one line, and the
@@ -56,3 +58,5 @@ numbers line up. Scripts the bundled subsets lack fall back to the system face.
 - Motion is hover and press only, 90 to 240ms, and off under reduced motion.
 - Empty states are a dashed box with one sentence and the next step.
 - Icons are Lucide (ISC), drawn as CSS masks so they take the text colour.
+- The app icon is the mark beside the name: a red rounded square on black. The manifest lets
+  a phone add the pages to its home screen and open them without browser chrome.

@@ -61,7 +61,7 @@ NO_POSTER_SECONDS = 3600  # and how long it takes the placeholder for an answer
 NO_POSTER = "/static/poster.svg"
 POLICY = (
     "default-src 'none'; style-src 'self'; font-src 'self'; img-src 'self'; "
-    "form-action 'self'; base-uri 'none'; frame-ancestors 'none'"
+    "manifest-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'"
 )
 
 
