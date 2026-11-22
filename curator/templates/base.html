@@ -13,7 +13,7 @@
   <link rel="preload" href="/static/fonts/Inter-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/static/app.css?v={{ version | urlencode }}">
 </head>
-<body>
+<body{% if focus %} class="focus"{% endif %}>
   <a class="skip" href="#main">Skip to the list</a>
   <header class="bar">
     <a class="mark" href="/">curator<span>library cleanup</span></a>

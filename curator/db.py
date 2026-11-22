@@ -133,6 +133,18 @@ CREATE TABLE IF NOT EXISTS taps (
     undo_note TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS taps_title ON taps (library, item_id, id);
+-- A title answered one at a time without a tag: pass (seen, left as the list has it) or later
+-- (put off). One row a title; `section` and `proposed_at` say which proposal was answered.
+CREATE TABLE IF NOT EXISTS reviews (
+    library TEXT NOT NULL,
+    item_id INTEGER NOT NULL,
+    mark TEXT NOT NULL,
+    section TEXT NOT NULL,
+    proposed_at TEXT NOT NULL DEFAULT '',
+    document_id INTEGER NOT NULL,
+    at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    PRIMARY KEY (library, item_id)
+);
 -- The libraries as the services last returned them: the allow list is read from here.
 CREATE TABLE IF NOT EXISTS catalogue (
     library TEXT NOT NULL,

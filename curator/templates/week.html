@@ -4,6 +4,7 @@
 {# Films run long on a phone, so the way to the other library stays in reach. #}
 <nav class="jump" aria-label="Libraries">
   {% for v in views %}{% set n = v.doc.going | length if v.doc else 0 %}<a class="jump-link{{ '' if n else ' none' }}" href="#{{ v.library }}" aria-label="{{ names[v.library] }}, {{ n }} {{ 'going' if v.doc and v.doc.mode == 'act' else 'would go' }}">{{ names[v.library] }}<b class="jump-n">{{ n }}</b></a>{% endfor %}
+  <a class="jump-link jump-go{{ '' if left else ' none' }}" href="/review" aria-label="Go through them one at a time, {{ left }} left">Review<b class="jump-n">{{ left }}</b></a>
 </nav>
 {% for v in views %}
 <section id="{{ v.library }}">
@@ -35,7 +36,7 @@
   {% if v.live is none %}<div class="banner bad"><b>The live tags could not be read.</b> {{ v.error }}. The buttons may not show a tag set elsewhere.</div>{% endif %}
 
   <h3 class="rule-head">{{ 'Would go' if rehearsal else 'Going' }} on {{ doc.next_run_at | day }} <span class="n">{{ doc.going | length }}</span></h3>
-  <p class="hint">Leave a title alone and the next run deletes it. Keep protects it for good.</p>
+  <p class="hint">Leave a title alone and the next run deletes it. Keep protects it for good. <a href="/review">Go through them one at a time</a>.</p>
   {% if doc.going %}<ul class="cards">{% for item in doc.going %}{% set section = 'going' %}{% include "_card.html" %}{% endfor %}</ul>
   {% else %}<div class="empty"><p>Nothing is due at the next run.</p></div>{% endif %}
 
@@ -47,14 +48,14 @@
 
   {% if doc.later %}
   <details><summary class="rule-head">Later <span class="n">{{ doc.later | length }}</span></summary>
-    <p class="hint">Not yet due, or held back by the cap. A later run takes them, largest first.</p>
+    <p class="hint">Not yet due, or held back by the cap. A later run takes them, largest first. <a href="/review?scope=later">Go through them one at a time</a>.</p>
     <ul class="cards">{% for item in doc.later %}{% set section = 'later' %}{% include "_card.html" %}{% endfor %}</ul>
   </details>
   {% endif %}
 
   {% if doc.kept %}
   <details><summary class="rule-head">Being kept for a year <span class="n">{{ doc.kept | length }}</span></summary>
-    <p class="hint">The judge chose to keep these for a year, then judges them again. Keep forever adds cleanup-keep so no run deletes them; Delete instead marks them for the next run.</p>
+    <p class="hint">The judge chose to keep these for a year, then judges them again. Keep forever adds cleanup-keep so no run deletes them; Delete instead marks them for the next run. <a href="/review?scope=kept">Go through them one at a time</a>.</p>
     <ul class="cards">{% for item in doc.kept %}{% set section = 'kept' %}{% include "_card.html" %}{% endfor %}</ul>
   </details>
   {% endif %}

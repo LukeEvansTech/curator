@@ -278,6 +278,32 @@ main > section {
   color: var(--text-2);
 }
 
+/* the way into the one-at-a-time review: the page's one filled control */
+.jump-go {
+  border-color: var(--text);
+  background: var(--text);
+  color: var(--bg);
+}
+
+.jump-go:hover {
+  border-color: var(--text);
+  background: rgb(248 250 252 / 86%);
+}
+
+.jump-go > .jump-n {
+  color: var(--go-fill);
+}
+
+.jump-go.none {
+  border-color: var(--line);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.jump-go.none > .jump-n {
+  color: var(--text-2);
+}
+
 .foot {
   max-width: 68ch;
   margin: 0 auto;
@@ -1033,6 +1059,267 @@ pre.digest {
   mask: url("/static/icons/external.svg") center / contain no-repeat;
 }
 
+/* ---------- one at a time ---------- */
+.focus {
+  /* room for the answers fixed to the foot of the screen, and the last answer above them */
+  padding-bottom: calc(204px + env(safe-area-inset-bottom));
+}
+
+.focus .foot {
+  display: none;
+}
+
+.review-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  color: var(--text-2);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 150ms var(--ease);
+}
+
+.back::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-bottom: 2px solid currentcolor;
+  border-left: 2px solid currentcolor;
+  transform: rotate(45deg);
+}
+
+.back:hover {
+  color: var(--text);
+}
+
+.so-far {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.so-far b {
+  color: var(--text);
+}
+
+.meter {
+  display: block;
+  width: 100%;
+  height: 4px;
+  border: 0;
+  border-radius: var(--pill);
+  background: var(--surface-2);
+  overflow: hidden;
+  appearance: none;
+}
+
+.meter::-webkit-progress-bar {
+  background: var(--surface-2);
+}
+
+.meter::-webkit-progress-value {
+  background: var(--text);
+}
+
+.meter::-moz-progress-bar {
+  background: var(--text);
+}
+
+.last {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 46px;
+  margin: 0 0 8px;
+  padding-left: 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+  font-size: 14px;
+}
+
+.done > .last {
+  margin-top: 12px;
+}
+
+.last p {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--text-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.last b {
+  margin-right: 4px;
+  color: var(--text);
+}
+
+.last .kept {
+  color: var(--keep);
+}
+
+.last .gone {
+  color: var(--go);
+}
+
+.last button {
+  flex: none;
+  width: auto;
+  min-height: 44px;
+  border-color: transparent;
+  background-color: transparent;
+}
+
+.rehearsal {
+  margin: 10px 0 0;
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.rehearsal b {
+  color: var(--text);
+}
+
+.stage {
+  display: grid;
+  grid-template-columns: minmax(0, 42%) minmax(0, 1fr);
+  gap: 0 14px;
+  align-items: start;
+  margin-top: 14px;
+}
+
+.stage-body {
+  min-width: 0;
+}
+
+.stage h1 {
+  margin: 4px 0 0;
+  font-size: clamp(21px, 5.6vw, 34px);
+}
+
+.stage-t {
+  text-decoration: none;
+}
+
+.stage-t:hover {
+  text-decoration: underline;
+}
+
+.stage .tag {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 10px;
+  margin: 0;
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+
+.stage .going {
+  color: var(--go);
+}
+
+.stage .kept {
+  color: var(--keep);
+}
+
+.stage .needs-you {
+  color: var(--warn);
+}
+
+.stage .reason,
+.stage .overview {
+  grid-area: auto / 1 / auto / -1;
+}
+
+.stage .overview {
+  max-width: 68ch;
+  margin: 12px 0 0;
+  color: var(--text-2);
+  font-size: 15px;
+}
+
+.dock {
+  position: fixed;
+  inset: auto 0 0;
+  z-index: 10;
+  padding: 10px max(var(--pad), calc((100% - 720px) / 2))
+    calc(10px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.answers {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.answers button {
+  min-height: 56px;
+  font-size: 16px;
+}
+
+/* the second row: the answers that change no tag */
+.answers button:nth-of-type(n + 3) {
+  min-height: 48px;
+  font-size: 15px;
+}
+
+.answers .wide {
+  grid-column: 1 / -1;
+}
+
+.answers .quiet {
+  border-color: var(--line-strong);
+  background-color: transparent;
+  color: var(--text-2);
+}
+
+.answers .quiet:hover {
+  border-color: var(--text);
+  color: var(--text);
+}
+
+/* fetched for the next title; never shown */
+.ahead {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.done h1 {
+  margin-top: 20px;
+}
+
+@media (width < 760px) {
+  /* the answers take the foot of a phone's screen, so the tabs step aside */
+  .focus .tabs {
+    display: none;
+  }
+}
+
 /* ---------- wider than a phone ---------- */
 @media (width >= 560px) {
   .stats {
@@ -1056,6 +1343,21 @@ pre.digest {
   }
 
   .title-head .overview {
+    grid-column: 2;
+  }
+
+  .stage {
+    grid-template-columns: 220px minmax(0, 1fr);
+    grid-template-rows: auto auto 1fr;
+    gap: 0 24px;
+  }
+
+  .stage .poster {
+    grid-row: 1 / span 3;
+  }
+
+  .stage .reason,
+  .stage .overview {
     grid-column: 2;
   }
 }
@@ -1105,6 +1407,21 @@ pre.digest {
   .tabs a:hover,
   .tabs a[aria-current="page"] {
     background: var(--surface-2);
+  }
+
+  .stage {
+    grid-template-columns: 300px minmax(0, 1fr);
+    gap: 0 32px;
+    max-width: 920px;
+    margin-inline: auto;
+  }
+
+  .review-top,
+  .meter,
+  .rehearsal,
+  .done {
+    max-width: 920px;
+    margin-inline: auto;
   }
 
   .rows > .pictured:has(> form) {
