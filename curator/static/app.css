@@ -577,10 +577,13 @@ a.imdb {
   gap: 6px;
   padding: 5px 10px;
   border: 1px solid var(--control);
-  border-radius: var(--pill);
+
+  /* a pill on one line, a rounded box when a narrow screen wraps it */
+  border-radius: 16px;
   color: var(--text);
   font-weight: 600;
   text-decoration: none;
+  white-space: normal;
   overflow: visible;
   transition:
     border-color 150ms var(--ease),
