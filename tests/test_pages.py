@@ -203,7 +203,7 @@ def test_this_week_opens_with_a_way_to_each_library(env):
     strip = client.get("/").text.split('<nav class="jump"')[1].split("</nav>")[0]
     for library, name in (("film", "Films"), ("tv", "TV")):
         going = len(sample("film-v1" if library == "film" else "tv-v2")["going"])
-        assert f'href="#{library}"' in strip and f"{name}<b>{going}</b>" in strip
+        assert f'href="#{library}"' in strip and f'{name}<b class="jump-n">{going}</b>' in strip
 
 
 def test_the_home_screen_icon_and_manifest_come_from_this_app(env):

@@ -245,7 +245,7 @@ main > section {
   background: var(--bg);
 }
 
-.jump a {
+.jump-link {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -264,17 +264,17 @@ main > section {
     border-color 150ms var(--ease);
 }
 
-.jump a:hover {
+.jump-link:hover {
   border-color: var(--line-strong);
   background: var(--surface-2);
 }
 
-.jump b {
+.jump-n {
   color: var(--go);
   font-variant-numeric: tabular-nums;
 }
 
-.jump .none b {
+.none > .jump-n {
   color: var(--text-2);
 }
 
