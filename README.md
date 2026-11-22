@@ -32,7 +32,7 @@ next weekly run    ─▶ the engine's plan reads the tags
 | `/review`                       | One title at a time: Keep, let it go or decide later, until the list is answered      |
 | `/runs`, `/run/{library}/{run}` | Every run: counts, plan funnel, judge batches, tokens and cost, digest, JSON          |
 | `/title/{library}/{id}`         | One title: facts, every verdict, what was done, button presses, service link          |
-| `/allow`                        | Protected titles and why (rating bar, `keep`, `cleanup-keep`), searchable             |
+| `/allow`                        | Protected titles and why (rating bar, `keep`, `cleanup-keep`); search to add one      |
 | `/deleted`                      | What went, largest first, and what a restore needs                                    |
 | `/ops`                          | Last document per library, refused publishes, tags in the services, refresh           |
 | `/poster/{library}/{id}`        | A title's poster, fetched from its service once and kept; `?w=500` is the large one   |

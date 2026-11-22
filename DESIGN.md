@@ -54,6 +54,10 @@ numbers line up. Scripts the bundled subsets lack fall back to the system face.
   behind a bar with a chevron.
 - **Lists**: Runs, Deleted and the Allow list are one surface with hairlines between rows;
   Deleted and the Allow list carry a small poster.
+- **Allow list**: two views behind one switch. On the list shows what is protected, the titles
+  added by hand first with their Remove; a title the keep tag or the rating bar protects has no
+  button, because there is nothing for one to do. Add a title searches the whole library and
+  offers Add only where it would change something.
 - **Facts**: a grid of uppercase label over value, inside one surface.
 
 ## Rules

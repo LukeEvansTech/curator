@@ -46,6 +46,54 @@ def test_allow_list_shows_protected_titles_and_why(env):
     assert "Kettle" not in client.get("/allow?q=%25").text
 
 
+def test_the_list_offers_remove_only_where_this_app_can_take_a_title_off(env):
+    _, client, _, _ = refreshed(env)
+    page = client.get("/allow").text
+    assert 'value="add"' not in page  # nothing on the list needs adding to it
+    by_hand = page.split("Added by hand")[1].split("Kept by the keep tag or the rating bar")[0]
+    assert "Fog Over Fenwick" in by_hand and ">Remove from allow list</button>" in by_hand
+    rest = page.split("Kept by the keep tag or the rating bar")[1]
+    assert "The Great Kettle Heist" in rest and "The Slow Detective" in rest
+    assert 'action="/allow/act"' not in rest  # the keep tag and the bar are not this app's to undo
+    assert "Add a title</a>" in page and 'href="/allow?show=all"' in page
+
+
+def test_a_list_cut_short_says_so_even_when_the_titles_added_by_hand_fill_it(env, monkeypatch):
+    _, client, _, _ = refreshed(env)
+    monkeypatch.setattr("curator.web.ALLOW_PAGE", 1)
+    page = client.get("/allow").text
+    assert "3 titles, the first 1 shown; narrow the search." in page
+    assert "Fog Over Fenwick" in page and "The Great Kettle Heist" not in page
+
+
+def test_add_a_title_searches_the_library_and_offers_only_what_changes_something(env):
+    _, client, film, _ = refreshed(env)
+
+    def found(q: str) -> str:
+        page = client.get(f"/allow?show=all&q={q}").text
+        return page.split('class="pictured"')[1].split('<form class="stack"')[0]  # its one row
+
+    blank = client.get("/allow?show=all").text
+    assert "Search for a title, then add it." in blank and 'class="pictured"' not in blank
+    assert "Not on the allow list" in found("gator")
+    assert ">Add to allow list</button>" in found("gator")
+    assert "keep tag" in found("kettle") and "<form" not in found("kettle")  # safe for good
+    # the rating bar protects only while the rating holds, so a lasting keep is worth offering
+    assert "rating bar" in found("slow") and ">Keep forever</button>" in found("slow")
+    back = "/allow?show=all&q=gator"
+    r = client.post(
+        "/allow/act",
+        data={"library": "film", "id": "101", "action": "add", "back": back},
+        follow_redirects=False,
+    )
+    assert r.headers["location"] == back and 101 in film.carrying("cleanup-keep")
+    assert ">Remove from allow list</button>" in found("gator")  # undone where it was done
+    assert "Nothing in the library matches" in client.get("/allow?show=all&q=zzzz").text
+    # with the keep tag as well, taking cleanup-keep off leaves it listed, and the button says so
+    film.tags["cleanup-keep"][1].add(301)
+    assert ">Remove cleanup-keep</button>" in found("kettle")
+
+
 def test_add_and_remove_cleanup_keep(env):
     db, client, film, _ = refreshed(env)
     back = "/allow?show=all&q=grandma"

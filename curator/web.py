@@ -820,7 +820,7 @@ def create_app(
     def allow_page(request: Request, library: str = "", q: str = "", why: str = "", show: str = ""):
         lib = library if library in LIBRARIES else ""
         why = why if why in allow.WHY else ""
-        everything = show == "all"
+        adding = show == "all"  # the Add view: a search of the whole library, on the list or not
         q = q.strip()[:100]
         sql = "SELECT * FROM catalogue WHERE (? = '' OR library = ?)"
         args: list[Any] = [lib, lib]
@@ -831,12 +831,16 @@ def create_app(
         rows = []
         now_tags = {lib_: live_or_none(lib_) for lib_ in LIBRARIES}
         ids = {lib_: imdb_ids(lib_) for lib_ in LIBRARIES}
-        for r in db.all(sql + " ORDER BY title COLLATE NOCASE", *args):
+        # The Add view lists nothing until it is searched: the whole library is not a list to read.
+        for r in db.all(sql + " ORDER BY title COLLATE NOCASE", *args) if q or not adding else ():
             row = overlay(allow.decode(r), now_tags[r["library"]])
             row["why"] = allow.reasons(row["library"], row)
             row["imdb_id"] = ids[row["library"]].get(row["id"], "")
-            if (everything or row["why"]) and (not why or why in row["why"]):
+            row["mine"] = TAG_KEEP in row["tags"]  # added by hand, so this app can take it off
+            if (adding or row["why"]) and (not why or why in row["why"]):
                 rows.append(row)
+        if not adding:
+            rows.sort(key=lambda row: not row["mine"])  # stable: by title within each half
         counts = {
             lib_: db.count("SELECT count(*) FROM catalogue WHERE library = ?", lib_)
             for lib_ in LIBRARIES
@@ -847,11 +851,12 @@ def create_app(
             nav="allow",
             rows=rows[:ALLOW_PAGE],
             total=len(rows),
+            by_hand=sum(row["mine"] for row in rows),
             cap=ALLOW_PAGE,
             library=lib,
             q=q,
             why=why,
-            show="all" if everything else "",
+            adding=adding,
             whys=allow.WHY,
             counts=counts,
             refreshed={lib_: db.get(f"allow_refresh:{lib_}", {}) for lib_ in LIBRARIES},
