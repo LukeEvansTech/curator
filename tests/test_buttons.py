@@ -101,6 +101,33 @@ def test_cross_site_press_is_refused(env):
     assert film.writes() == []
 
 
+def test_a_press_from_this_site_is_taken_however_the_browser_names_it(env):
+    from conftest import token_of
+
+    _, client, film = setup(env)
+    data = {"library": "film", "id": "101", "action": "keep", "token": token_of(client, "film")}
+    # a browser names the site it is on, and says the press came from the same one
+    named = {"origin": "http://testserver", "sec-fetch-site": "same-origin"}
+    assert client.post("/act", data=data, headers=named, follow_redirects=False).status_code == 303
+    assert 101 in film.carrying("cleanup-keep")
+    # under a no-referrer policy it withholds the name, even from the page's own site
+    blank = {"origin": "null", "sec-fetch-site": "same-origin"}
+    undo = {**data, "action": "undo"}
+    assert client.post("/act", data=undo, headers=blank, follow_redirects=False).status_code == 303
+    assert 101 not in film.carrying("cleanup-keep")
+    # a withheld name with nothing to vouch for it is still refused
+    assert client.post("/act", data=data, headers={"origin": "null"}).status_code == 403
+    cross = {"origin": "null", "sec-fetch-site": "cross-site"}
+    assert client.post("/act", data=data, headers=cross).status_code == 403
+    assert len(film.writes()) == 2
+
+
+def test_pages_keep_their_origin_on_presses_to_this_site(env):
+    _, client, _ = setup(env)
+    # no-referrer would blank the Origin of every press, and each one would be refused
+    assert client.get("/").headers["referrer-policy"] == "same-origin"
+
+
 def test_tag_already_set_elsewhere_is_left_alone_and_never_undone(env):
     db, client, film = setup(env)
     film.tags["cleanup-keep"][1].add(101)

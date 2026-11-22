@@ -161,7 +161,12 @@ def create_app(
         a policy that lets nothing load from anywhere else and no script run at all."""
         if request.method in ("POST", "PUT", "DELETE"):
             site = request.headers.get("sec-fetch-site", "")
-            origin = request.headers.get("origin") or request.headers.get("referer") or ""
+            origin = request.headers.get("origin", "")
+            if origin == "null" and site == "same-origin":
+                # A page under a no-referrer policy has its origin withheld even from its own
+                # site. The browser's own account of where the press came from then decides.
+                origin = ""
+            origin = origin or request.headers.get("referer") or ""
             host = urllib.parse.urlsplit(origin).netloc
             if (site and site not in ("same-origin", "none")) or (
                 origin and host != request.headers.get("host", "")
@@ -171,7 +176,9 @@ def create_app(
         response.headers["Content-Security-Policy"] = POLICY
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
-        response.headers["Referrer-Policy"] = "no-referrer"
+        # This site's own address goes to this site and to nobody else. `no-referrer` would
+        # also blank the Origin of this site's own presses, which the check above reads.
+        response.headers["Referrer-Policy"] = "same-origin"
         if response.headers.get("content-type", "").startswith("text/html"):
             response.headers["Cache-Control"] = "no-store"
         return response
