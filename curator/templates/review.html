@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}One at a time · curator{% endblock %}
+{% from "_bits.html" import poster, facts_row %}
+{# The answer just given, and the one press that takes it back. #}
+{% macro said(last) %}
+<form class="last" method="post" action="/review/act">
+  <p><b{% if last.tone %} class="{{ last.tone }}"{% endif %}>{{ last.text }}</b> {{ last.item.title }}</p>
+  {% if last.undo %}
+  <input type="hidden" name="library" value="{{ last.library }}">
+  <input type="hidden" name="id" value="{{ last.item.id }}">
+  <input type="hidden" name="token" value="{{ last.token }}">
+  <input type="hidden" name="scope" value="{{ scope }}">
+  <button type="submit" name="action" value="{{ last.undo }}" class="undo">Undo</button>
+  {% endif %}
+</form>
+{% endmacro %}
+{% block main %}
+<div class="review-top">
+  <a class="back" href="/">This week</a>
+  <p class="so-far">{% if total %}<b>{{ answered }}</b> of {{ total }} done{% if put_off %} · {{ put_off }} put off{% endif %}{% if sent %} · {{ sent }} not shown yet{% endif %}{% else %}{{ scope_name }}{% endif %}</p>
+</div>
+{% if total %}<progress class="meter" max="{{ total }}" value="{{ answered }}" aria-label="{{ scope_name }}: answered">{{ answered }} of {{ total }}</progress>{% endif %}
+{% for lib in unread %}<div class="banner bad"><b>The live tags for {{ names[lib] }} could not be read.</b> A title tagged elsewhere may be asked about here.</div>{% endfor %}
+
+{% if now %}
+{% set item = now.item %}{% set v = now.view %}
+{% if v.doc.mode != 'act' %}<p class="rehearsal"><b>Dry run.</b> Nothing is deleted yet; the buttons still set real tags.</p>{% endif %}
+<article class="stage">
+  {{ poster(now.library, item.id, now.out, wide=true) }}
+  <div class="stage-body">
+    <p class="tag"><span>{{ names[now.library] }}</span> <span class="{{ now.section | replace('_', '-') }}">{% if now.section == 'going' %}{{ 'Going' if v.doc.mode == 'act' else 'Would go' }} {{ v.doc.next_run_at | shortday }}{% elif now.section == 'kept' %}Kept for a year{% elif now.section == 'later' %}Later{% else %}Needs you{% endif %}</span></p>
+    <h1><a class="stage-t" href="/title/{{ now.library }}/{{ item.id }}">{{ item.title }}</a>{% if item.year %} <span class="year">({{ item.year }})</span>{% endif %}</h1>
+    {{ facts_row(item, now.out, item.title) }}
+  </div>
+  {% if item.reason %}<p class="reason">{% if byline.get(item.by) %}<span class="who">{{ byline.get(item.by) }}</span>{% endif %}{{ item.reason }}</p>{% endif %}
+  {% if item.overview %}<p class="overview">{{ item.overview }}</p>{% endif %}
+</article>
+{# Fixed to the foot of the screen: the same button in the same place, title after title. #}
+<div class="dock">
+  {% if last %}{{ said(last) }}{% endif %}
+  <form class="answers" method="post" action="/review/act">
+    <input type="hidden" name="library" value="{{ now.library }}">
+    <input type="hidden" name="id" value="{{ item.id }}">
+    <input type="hidden" name="token" value="{{ v.token }}">
+    <input type="hidden" name="scope" value="{{ scope }}">
+    {% for row in (now.main, now.second) %}{% for action, label, look in row %}
+    <button type="submit" name="action" value="{{ action }}" class="{{ look }}{{ ' wide' if row | length == 1 }}">{{ label }}</button>
+    {% endfor %}{% endfor %}
+  </form>
+</div>
+{# The next poster is fetched now, so it is there when the next title is drawn. #}
+{% if ahead %}<img class="ahead" src="/poster/{{ ahead.library }}/{{ ahead.item.id }}?w=500" alt="" width="1" height="1" aria-hidden="true">{% endif %}
+
+{% else %}
+<div class="done">
+  {% if last %}{{ said(last) }}{% endif %}
+  {% if not any_doc %}
+  <h1>Nothing to go through yet</h1>
+  <div class="empty"><p>No review document yet. The next weekly run publishes one.</p></div>
+  {% elif not total %}
+  <h1>{{ scope_name }}</h1>
+  <div class="empty"><p>This list is empty this week.</p></div>
+  {% else %}
+  <h1>{% if answered == total %}All {{ total }} answered{% else %}{{ answered }} of {{ total }} answered{% endif %}</h1>
+  <p class="meta">{{ scope_name }}</p>
+  {% if sent %}<div class="banner bad"><b>{{ sent }} not shown yet.</b> The service took a tag from here and has not shown it. Reload in a minute: a title whose tag does not land is asked about again.</div>{% endif %}
+  <div class="summary">
+    <ul class="stats">
+      <li><b>{{ tally.keep }}</b>kept</li>
+      <li><b>{{ tally.delete }}</b>marked for deletion</li>
+      <li><b>{{ tally.pass }}</b>left as listed</li>
+      <li><b>{{ put_off }}</b>put off</li>
+    </ul>
+  </div>
+  {% if put_off %}
+  <form class="stack" method="post" action="/review/again">
+    <input type="hidden" name="scope" value="{{ scope }}">
+    <button type="submit">Go through the {{ put_off }} put off</button>
+  </form>
+  {% if scope != 'kept' %}<p class="hint">Putting a title off does not hold it back. A run still takes it when it is due, unless it is kept.</p>{% endif %}
+  {% endif %}
+  {% endif %}
+  <h2 class="rule-head">More to go through</h2>
+  <ul class="rows">
+    {% for name, label, n in others %}<li><div class="top-line"><a href="/review?scope={{ name }}">{{ label }}</a><span class="num">{{ n }} left</span></div></li>{% endfor %}
+  </ul>
+  <p class="links"><a class="button" href="/">Back to This week</a></p>
+</div>
+{% endif %}
+{% endblock %}

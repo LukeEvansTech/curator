@@ -12,6 +12,12 @@ it; this file holds what the code does not say.
 - Layout: `document.py` (validation, pure), `ingest.py` (document into tables), `buttons.py` (the
   only tag writes), `arr.py` (the only network code), `allow.py` (allow list), `web.py` and
   `templates/` (pages), `db.py` (schema).
+- One at a time: `/review` asks about the first title in a list that still needs an answer
+  (`review.py`; lists are `due`, `later`, `kept`). Keep and Delete instead go through
+  `buttons.week`, so they are This week's own presses. A pass and a put-off change no tag and are
+  kept in `reviews`: a pass stands while the list carries the proposal it answered (same
+  intent, same `proposed_at`), a put-off for the document it was made on. A tag added from any
+  page clears the title's mark.
 - Posters: `/poster/{library}/{id}` fetches a title's poster from its service once and keeps it
   under `posters/` in the data directory, so a title that has left the library still shows one.
   The IMDb ID comes from the library read into `links`, which is never cleared for the same
@@ -29,6 +35,9 @@ it; this file holds what the code does not say.
   writes to the engines' state. The tags are the decision; the next plan reads them.
 - **A This week button acts only on the latest document.** Only IDs it lists, only the `actions`
   it offers for that ID, and only with a form token drawn from that document.
+- **A page's form must work in a browser, not only in the tests.** The cross-site check reads
+  `Origin` and `Sec-Fetch-Site`, which the test client does not send; a referrer policy that
+  blanks `Origin` once refused every press. Press a new form in a real browser before shipping.
 - **Undo removes only what this app added.** A tap is recorded after the service confirms the tag
   (read back, since the editor endpoint acknowledges before acting). A tag already set elsewhere
   is left alone and never becomes undoable.

@@ -96,6 +96,12 @@ def close_tap(db: DB, tap_id: int, note: str) -> None:
     )
 
 
+def clear_mark(db: DB, library: str, item_id: int) -> None:
+    """Drop a title's pass or put-off from the one-at-a-time review: a tag from any page has
+    answered it, or the mark was taken back. Undoing that tag then leaves the title to be asked."""
+    db.run("DELETE FROM reviews WHERE library = ? AND item_id = ?", library, item_id)
+
+
 def _record(
     db: DB,
     library: str,
@@ -121,6 +127,22 @@ def _record(
     )
 
 
+def listed(db: DB, key: str, library: str, item_id: int, token: str) -> tuple[int, str, dict]:
+    """The latest document's id, with the section and entry it gives a title, for a press drawn
+    from that document and no other. Call under LOCK."""
+    latest = db.latest(library)
+    if latest is None:
+        raise Refused(404, "No list has been published for that library yet.")
+    doc_id, doc = latest
+    expected = form_token(key, library, doc_id)
+    if not expected or not hmac.compare_digest(expected.encode(), token.encode()):
+        raise Refused(409, "The list has changed since this page was loaded. Reload it.")
+    found = find(doc, item_id)
+    if found is None:
+        raise Refused(404, "That title is not on the current list.")
+    return doc_id, found[0], found[1]
+
+
 def week(
     db: DB, client: TagClient, key: str, library: str, item_id: int, action: str, token: str
 ) -> Done:
@@ -130,17 +152,7 @@ def week(
     if not client.configured:
         raise Refused(503, "The service for this library is not configured.")
     with LOCK:  # held from the document check to the tag change, so a publish cannot slip between
-        latest = db.latest(library)
-        if latest is None:
-            raise Refused(404, "No list has been published for that library yet.")
-        doc_id, doc = latest
-        expected = form_token(key, library, doc_id)
-        if not expected or not hmac.compare_digest(expected.encode(), token.encode()):
-            raise Refused(409, "The list has changed since this page was loaded. Reload it.")
-        found = find(doc, item_id)
-        if found is None:
-            raise Refused(404, "That title is not on the current list.")
-        item = found[1]
+        doc_id, _, item = listed(db, key, library, item_id, token)
         live = client.tagged()
         allow.reconcile(db, library, live)  # every tap this read shows gone, not only this title's
         mine = settle(db, library, item_id, live)
@@ -180,9 +192,12 @@ def week(
         except Unconfirmed:
             # Taken but not shown yet: pending, and this app's only if it lands soon (settle).
             _record(db, library, item_id, "week", action, tag, True, doc_id, confirmed=False)
+            clear_mark(db, library, item_id)
             raise
         # Recorded once the tag is confirmed, so undo never removes a tag this app did not add.
         _record(db, library, item_id, "week", action, tag, True, doc_id)
+        # The tag is the answer from here on. A write the service refused leaves the mark alone.
+        clear_mark(db, library, item_id)
         allow.set_tags(db, library, item_id, tag, True)
         return Done("Kept." if action == "keep" else "Marked for deletion.", True)
 
@@ -203,7 +218,12 @@ def allow_list(db: DB, client: TagClient, library: str, item_id: int, action: st
             if has:
                 allow.set_tags(db, library, item_id, TAG_KEEP, True)
                 return Done(f"It already carries {TAG_KEEP}.", False)
-            client.add(item_id, TAG_KEEP)
+            try:
+                client.add(item_id, TAG_KEEP)
+            except Unconfirmed:
+                clear_mark(db, library, item_id)  # possibly on: the tag, not the mark, answers
+                raise
+            clear_mark(db, library, item_id)
             _record(db, library, item_id, "allow", "allow-add", TAG_KEEP, True, None)
             allow.set_tags(db, library, item_id, TAG_KEEP, True)
             return Done(f"Added {TAG_KEEP}.", True)

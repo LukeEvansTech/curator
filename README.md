@@ -29,6 +29,7 @@ next weekly run    ─▶ the engine's plan reads the tags
 | Page                            | Shows                                                                                 |
 | ------------------------------- | ------------------------------------------------------------------------------------- |
 | `/`                             | Per library: totals, Going, Needs you, Later, Being kept for a year, Deleted last run |
+| `/review`                       | One title at a time: Keep, let it go or decide later, until the list is answered      |
 | `/runs`, `/run/{library}/{run}` | Every run: counts, plan funnel, judge batches, tokens and cost, digest, JSON          |
 | `/title/{library}/{id}`         | One title: facts, every verdict, what was done, button presses, service link          |
 | `/allow`                        | Protected titles and why (rating bar, `keep`, `cleanup-keep`), searchable             |

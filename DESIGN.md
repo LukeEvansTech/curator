@@ -35,6 +35,12 @@ numbers line up. Scripts the bundled subsets lack fall back to the system face.
   with a red icon. From 760px, pills in a sticky top bar beside the name.
 - **Jump strip**: on This week, Films and TV as two pills with the count going in each, stuck to
   the top while the page scrolls, because the second library sits below every card of the first.
+- **One at a time**: the white Review pill on the jump strip opens a screen that asks about one
+  title: a large poster beside the title and facts, the reason, the synopsis. The answers are
+  fixed to the foot of the screen, Keep on the left and whatever ends in deletion on the right,
+  with the answers that change no tag (the pass, Decide later) in a second row. The answer just
+  given sits above them with its Undo. On a phone the tabs step aside for them. Nothing in reach
+  of a thumb moves from one title to the next.
 - **Summary**: the one number a person acts on leads, large and red, with the day and the size
   beside it; later, kept, needs you and last run sit under it as small figures.
 - **Card**: the poster, then the title and year, the size, plays and origin on one line, and the
@@ -55,6 +61,7 @@ numbers line up. Scripts the bundled subsets lack fall back to the system face.
 - Radius 12px on surfaces, 8px inside them, 10px on controls; no shadows, no gradients.
 - No script, and nothing loaded from elsewhere: fonts, icons and posters come from this app.
 - Red, green and amber are states, never decoration. The posters are the only other colour.
+  White fill is kept for the one way into the review.
 - Motion is hover and press only, 90 to 240ms, and off under reduced motion.
 - Empty states are a dashed box with one sentence and the next step.
 - Icons are Lucide (ISC), drawn as CSS masks so they take the text colour.

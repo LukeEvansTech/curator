@@ -28,7 +28,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
 
-from . import allow, buttons, ingest
+from . import allow, buttons, ingest, review
 from .arr import (
     POSTER_WIDTHS,
     TAG_DELETE,
@@ -198,6 +198,10 @@ def create_app(
         at = local(stamp)
         return f"{at:%A %-d %B}" if at else "the next run"
 
+    def shortday(stamp: Any) -> str:
+        at = local(stamp)
+        return f"{at:%a %-d %b}" if at else "the next run"
+
     def ago(stamp: Any) -> str:
         at = moment(stamp) if isinstance(stamp, str) else None
         if not at:
@@ -222,6 +226,7 @@ def create_app(
         gb=gb,
         when=when,
         day=day,
+        shortday=shortday,
         ago=ago,
         fact_list=fact_list,
         imdb_fact=imdb_fact,
@@ -239,8 +244,10 @@ def create_app(
     def page(request: Request, name: str, status: int = 200, **ctx) -> HTMLResponse:
         return tpl.TemplateResponse(request, name, ctx, status_code=status)
 
-    def problem(request: Request, status: int, message: str) -> HTMLResponse:
-        return page(request, "problem.html", status=status, status_code=status, message=message)
+    def problem(request: Request, status: int, message: str, back: str = "") -> HTMLResponse:
+        return page(
+            request, "problem.html", status=status, status_code=status, message=message, back=back
+        )
 
     def imdb_ids(library: str) -> dict[int, str]:
         """Every IMDb id on record for a library, by the service's id for the title."""
@@ -377,7 +384,7 @@ def create_app(
         return "\n".join(lines) + "\n"
 
     # --- This week ---
-    def week_view(library: str) -> dict:
+    def week_view(library: str, links: bool = True) -> dict:
         latest = db.latest(library)
         view: dict[str, Any] = {"library": library, "doc": None, "live": None, "error": ""}
         if latest is None:
@@ -389,8 +396,9 @@ def create_app(
         at = moment(doc["generated_at"])
         view["stale"] = bool(at and (dt.datetime.now(dt.timezone.utc) - at).days >= s.stale_days)
         view["run_key"] = ingest.run_key(doc, doc_id)
-        view["imdb"] = imdb_ids(library)
-        ids = [i["id"] for k in ("going", "later", "kept", "needs_you") for i in doc.get(k) or []]
+        view["imdb"] = imdb_ids(library) if links else {}
+        view["marks"] = review.marks(db, library)
+        ids = {i["id"] for k in ("going", "later", "kept", "needs_you") for i in doc.get(k) or []}
         # Taps are reconciled with the tags (a pending add confirmed, a removed tag's tap closed)
         # only under the lock the buttons hold and on a read taken inside it, so an older read
         # can never close a tap a press has just recorded. When a press holds the lock, the page
@@ -403,8 +411,14 @@ def create_app(
                 view["error"] = str(exc)
             if reconciled and view["live"] is not None:
                 allow.reconcile(db, library, view["live"])  # off-list titles' taps too
+            # One read finds the few titles with a press still open; only those are settled.
+            open_taps = db.all(
+                "SELECT DISTINCT item_id FROM taps WHERE library = ? AND page = 'week'"
+                " AND added = 1 AND undone_at IS NULL",
+                library,
+            )
             taps = {}
-            for item_id in ids:
+            for item_id in ids.intersection(row["item_id"] for row in open_taps):
                 if reconciled and view["live"] is not None:
                     taps[item_id] = buttons.settle(db, library, item_id, view["live"])
                 else:
@@ -412,10 +426,10 @@ def create_app(
         finally:
             if reconciled:
                 ingest.LOCK.release()
-        mine, pending = {}, set()
+        mine, pending = {}, {}
         for item_id, tap in taps.items():
             if tap and not tap["confirmed"]:
-                pending.add(item_id)
+                pending[item_id] = tap["tag"]
             elif tap:
                 mine[item_id] = tap["tag"]
         view["mine"], view["pending"] = mine, pending
@@ -503,9 +517,125 @@ def create_app(
             row["tags"] = sorted(held | {t for t in (TAG_KEEP, TAG_DELETE) if row["id"] in tags[t]})
         return row
 
+    # --- one at a time ---
+    @app.get("/review", response_class=HTMLResponse)
+    def review_page(request: Request, scope: str = "", last: str = ""):
+        scope = scope if scope in review.SCOPES else "due"
+        views = {lib: week_view(lib, links=False) for lib in LIBRARIES}
+        entries = review.queue(views, scope)
+        waiting = [e for e in entries if e["stand"] == "wait"]
+        tally = {k: sum(e["stand"] == k for e in entries) for k in ("keep", "delete", "pass")}
+        put_off = sum(e["stand"] == "later" for e in entries)
+        sent = sum(e["stand"] == "sent" for e in entries)
+        now = waiting[0] if waiting else None
+        if now:
+            view = views[now["library"]]
+            known = db.one(
+                "SELECT imdb_id FROM links WHERE library = ? AND id = ?",
+                now["library"],
+                now["item"]["id"],
+            )
+            main, second = review.choices(
+                now["section"], card_state(view, now["item"], now["section"])["buttons"]
+            )
+            now = {
+                **now,
+                "view": view,
+                "main": main,
+                "second": second,
+                "out": imdb_link(
+                    known["imdb_id"] if known else "", now["item"]["title"], now["item"]["year"]
+                ),
+            }
+        return page(
+            request,
+            "review.html",
+            nav="week",
+            focus=bool(now),
+            scope=scope,
+            scope_name=review.SCOPE_NAMES[scope],
+            any_doc=any(v["doc"] for v in views.values()),
+            total=len(entries),
+            answered=len(entries) - len(waiting) - put_off - sent,
+            put_off=put_off,
+            sent=sent,
+            tally=tally,
+            now=now,
+            ahead=waiting[1] if len(waiting) > 1 else None,
+            last=review.last_answer(
+                views,
+                entries,
+                last[:40],
+                # Only a tag this app added can be taken off again; one set elsewhere stays.
+                lambda e: ("undo", "Undo")
+                in card_state(views[e["library"]], e["item"], e["section"])["buttons"],
+            ),
+            others=[
+                (name, review.SCOPE_NAMES[name], review.left(views, name))
+                for name in review.SCOPES
+                if name != scope
+            ],
+            unread=[lib for lib, v in views.items() if v["doc"] and v["live"] is None],
+        )
+
+    @app.post("/review/act")
+    def review_act(
+        request: Request,
+        library: str = Form(""),
+        id: str = Form(""),
+        action: str = Form(""),
+        token: str = Form(""),
+        scope: str = Form(""),
+    ):
+        scope = scope if scope in review.SCOPES else "due"
+        back = "/review" if scope == "due" else f"/review?scope={scope}"
+        if library not in LIBRARIES:
+            return problem(request, 400, "That request names a library this app does not have.")
+        if not (id.isascii() and id.isdigit() and len(id) <= 15):
+            return problem(request, 400, "That request names no title.")
+        item_id, key = int(id), s.key(library)
+        try:
+            if action in review.MARKS:
+                review.mark(db, key, library, item_id, action, token[:200])
+            elif action == "unmark":
+                review.unmark(db, key, library, item_id, token[:200])
+            else:
+                buttons.week(db, clients[library], key, library, item_id, action, token[:200])
+        except buttons.Refused as exc:
+            # A second press of the same button finds the first already done: carry on.
+            tap = buttons.open_tap(db, library, item_id)
+            wanted = buttons.TAG_FOR.get(action)
+            # (a press still waiting on the service is not done, and says so)
+            landed = bool(tap and tap["confirmed"] and tap["tag"] == wanted)
+            repeat = (tap is None) if action == "undo" else landed
+            if exc.status != 409 or not repeat:
+                return problem(request, exc.status, exc.message, back=back)
+        except ArrError as exc:
+            return problem(request, 502, f"Not done: {exc}", back=back)
+        finally:
+            live_cache.pop(library, None)
+        if action not in ("undo", "unmark"):
+            back += f"{'&' if '?' in back else '?'}last={library}-{item_id}"
+        return RedirectResponse(back, status_code=303)
+
+    @app.post("/review/again")
+    def review_again(scope: str = Form("")):
+        scope = scope if scope in review.SCOPES else "due"
+        review.again(db, scope)
+        return RedirectResponse(
+            "/review" if scope == "due" else f"/review?scope={scope}", status_code=303
+        )
+
     @app.get("/", response_class=HTMLResponse)
     def week(request: Request):
-        return page(request, "week.html", nav="week", views=[week_view(lib) for lib in LIBRARIES])
+        views = {lib: week_view(lib) for lib in LIBRARIES}
+        return page(
+            request,
+            "week.html",
+            nav="week",
+            views=list(views.values()),
+            left=review.left(views, "due"),
+        )
 
     @app.post("/act")
     def act(
