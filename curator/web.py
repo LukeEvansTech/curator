@@ -7,6 +7,8 @@ import hmac
 import json
 import logging
 import math
+import os
+import tempfile
 import threading
 import time
 import urllib.parse
@@ -27,7 +29,16 @@ from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
 
 from . import allow, buttons, ingest
-from .arr import TAG_DELETE, TAG_KEEP, ArrError, TagClient, radarr, sonarr
+from .arr import (
+    POSTER_WIDTHS,
+    TAG_DELETE,
+    TAG_KEEP,
+    ArrError,
+    TagClient,
+    image_type,
+    radarr,
+    sonarr,
+)
 from .config import Settings
 from .db import DB
 from .document import JUDGE_FIELDS, LIBRARIES, Invalid, find, moment, normalise, sign
@@ -44,6 +55,10 @@ LIVE_TTL = 10.0  # seconds a read of the live tags serves a page before it is re
 ALLOW_PAGE = 300  # rows the allow list shows at once
 DELETED_PAGE = 100  # rows a page of /deleted shows
 RUNS_PAGE = 50  # runs a page of /runs shows
+IMDB = "https://www.imdb.com"
+POSTER_SECONDS = 7 * 86400  # how long a browser keeps a poster this app holds
+NO_POSTER_SECONDS = 3600  # and how long it takes the placeholder for an answer
+NO_POSTER = "/static/poster.svg"
 POLICY = (
     "default-src 'none'; style-src 'self'; font-src 'self'; img-src 'self'; "
     "form-action 'self'; base-uri 'none'; frame-ancestors 'none'"
@@ -60,27 +75,54 @@ def gb(v: Any) -> str:
     return f"{f / 1000:,.2f} TB" if f >= 1000 else f"{f:,.1f} GB"
 
 
-def facts(item: dict) -> str:
-    """Size, rating, plays and origin on one line; a fact the document lacks is left out."""
+def imdb_fact(item: dict) -> str:
+    """The rating as the IMDb link says it; plain "IMDb" when the record has no score."""
+    if item.get("imdb_score") is None:
+        return "IMDb"
+    votes = f" on {int(item['imdb_votes']):,} votes" if item.get("imdb_votes") is not None else ""
+    return f"IMDb {float(item['imdb_score']):.1f}{votes}"
+
+
+def fact_list(item: dict) -> list[tuple[str, str]]:
+    """Size, plays and origin, each with its kind; a fact the record lacks is left out."""
     parts = []
     if item.get("size_gb") is not None:
-        parts.append(gb(item["size_gb"]))
-    if item.get("imdb_score") is not None:
-        votes = (
-            f" on {int(item['imdb_votes']):,} votes" if item.get("imdb_votes") is not None else ""
-        )
-        parts.append(f"IMDb {float(item['imdb_score']):.1f}{votes}")
+        parts.append(("size", gb(item["size_gb"])))
     if item.get("plays") is not None:
         n = int(item["plays"])
-        parts.append(f"{n} play{'' if n == 1 else 's'}")
+        parts.append(("plays", f"{n} play{'' if n == 1 else 's'}"))
     if item.get("finished_by"):
-        parts.append(f"finished by {int(item['finished_by'])}")
+        parts.append(("plays", f"finished by {int(item['finished_by'])}"))
     origin = ORIGINS.get(item.get("origin") or "", "")
     if item.get("origin") == "requested" and item.get("requested_by"):
         origin = f"requested by {item['requested_by']}"
     if origin:
-        parts.append(origin)
-    return " · ".join(parts)
+        parts.append(("origin", origin))
+    return parts
+
+
+def imdb_link(imdb_id: str, title: Any, year: Any) -> str:
+    """The title's IMDb page when its id is known, else IMDb's own title search for it."""
+    if imdb_id:
+        return f"{IMDB}/title/{imdb_id}/"
+    query = f"{title} {year}" if year else str(title)
+    return f"{IMDB}/find/?" + urllib.parse.urlencode({"q": query, "s": "tt"})
+
+
+def keep_file(path: Path, data: bytes) -> None:
+    """Write beside the target, then rename, so a reader never meets half a poster. A volume
+    that cannot be written costs only the next fetch."""
+    name = ""
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with tempfile.NamedTemporaryFile(dir=path.parent, delete=False) as tmp:
+            name = tmp.name
+            tmp.write(data)
+        os.replace(name, path)
+    except OSError as exc:
+        log.warning("poster %s could not be kept: %s", path.name, exc)
+        if name:
+            Path(name).unlink(missing_ok=True)
 
 
 def service_link(s: Settings, library: str, slug: str) -> str:
@@ -169,9 +211,22 @@ def create_app(
     def total_gb(items: list[dict]) -> str:
         return gb(sum(float(i.get("size_gb") or 0) for i in items))
 
-    tpl.env.filters.update(gb=gb, when=when, day=day, ago=ago, facts=facts, total_gb=total_gb)
+    tpl.env.filters.update(
+        gb=gb,
+        when=when,
+        day=day,
+        ago=ago,
+        fact_list=fact_list,
+        imdb_fact=imdb_fact,
+        total_gb=total_gb,
+    )
     tpl.env.globals.update(
-        version=s.version, names=NAMES, service=SERVICE, byline=BYLINE, cost=cost
+        version=s.version,
+        names=NAMES,
+        service=SERVICE,
+        byline=BYLINE,
+        cost=cost,
+        imdb_link=imdb_link,
     )
 
     def page(request: Request, name: str, status: int = 200, **ctx) -> HTMLResponse:
@@ -179,6 +234,11 @@ def create_app(
 
     def problem(request: Request, status: int, message: str) -> HTMLResponse:
         return page(request, "problem.html", status=status, status_code=status, message=message)
+
+    def imdb_ids(library: str) -> dict[int, str]:
+        """Every IMDb id on record for a library, by the service's id for the title."""
+        rows = db.all("SELECT id, imdb_id FROM links WHERE library = ?", library)
+        return {r["id"]: r["imdb_id"] for r in rows}
 
     def live(library: str, fresh: bool = False) -> dict[str, frozenset[int]]:
         cached = live_cache.get(library)
@@ -322,6 +382,7 @@ def create_app(
         at = moment(doc["generated_at"])
         view["stale"] = bool(at and (dt.datetime.now(dt.timezone.utc) - at).days >= s.stale_days)
         view["run_key"] = ingest.run_key(doc, doc_id)
+        view["imdb"] = imdb_ids(library)
         ids = [i["id"] for k in ("going", "later", "kept", "needs_you") for i in doc.get(k) or []]
         # Taps are reconciled with the tags (a pending add confirmed, a removed tag's tap closed)
         # only under the lock the buttons hold and on a read taken inside it, so an older read
@@ -547,6 +608,7 @@ def create_app(
         cat = overlay(allow.decode(c), now_tags) if c else None
         latest = db.latest(library)
         on_list = find(latest[1], item_id) if latest else None
+        known = db.one("SELECT imdb_id FROM links WHERE library = ? AND id = ?", library, item_id)
         return page(
             request,
             "title.html",
@@ -575,7 +637,38 @@ def create_app(
                 item_id,
             ),
             link=service_link(s, library, cat["slug"] if cat else ""),
+            out=imdb_link(known["imdb_id"] if known else "", (t or c)["title"], (t or c)["year"]),  # type: ignore[index]
             tags_live=now_tags is not None,
+        )
+
+    # --- posters ---
+    @app.get("/poster/{library}/{item_id}")
+    def poster(library: str, item_id: int, w: int = POSTER_WIDTHS[0]):
+        """One title's poster, from this app's own address so the page loads nothing from
+        elsewhere. Fetched from the service once and then kept, so a title that has left the
+        library still shows the poster it had. No poster: the placeholder."""
+        if library not in LIBRARIES or not 0 < item_id < 10**15:
+            raise HTTPException(404, "poster not found")
+        width = w if w in POSTER_WIDTHS else POSTER_WIDTHS[0]
+        kept = s.data_dir / "posters" / library / f"{item_id}-{width}"
+        try:
+            data = kept.read_bytes()
+        except OSError:
+            data = b""
+        kind = image_type(data[:16])
+        if not kind:
+            wait = NO_POSTER_SECONDS
+            try:
+                found = clients[library].poster(item_id, width)
+            except ArrError:
+                found, wait = None, 0  # no answer is not "no poster": ask again on the next view
+            if found is None:
+                cache = f"private, max-age={wait}" if wait else "no-store"
+                return RedirectResponse(NO_POSTER, status_code=302, headers={"Cache-Control": cache})
+            data, kind = found
+            keep_file(kept, data)
+        return Response(
+            data, media_type=kind, headers={"Cache-Control": f"private, max-age={POSTER_SECONDS}"}
         )
 
     # --- allow list ---
@@ -593,9 +686,11 @@ def create_app(
             args.append(f"%{esc}%")
         rows = []
         now_tags = {lib_: live_or_none(lib_) for lib_ in LIBRARIES}
+        ids = {lib_: imdb_ids(lib_) for lib_ in LIBRARIES}
         for r in db.all(sql + " ORDER BY title COLLATE NOCASE", *args):
             row = overlay(allow.decode(r), now_tags[r["library"]])
             row["why"] = allow.reasons(row["library"], row)
+            row["imdb_id"] = ids[row["library"]].get(row["id"], "")
             if (everything or row["why"]) and (not why or why in row["why"]):
                 rows.append(row)
         counts = {
@@ -696,6 +791,7 @@ def create_app(
             page_no=page_no,
             pages=pages,
             recycle_days=s.recycle_days,
+            links={lib_: imdb_ids(lib_) for lib_ in LIBRARIES},
         )
 
     # --- ops ---

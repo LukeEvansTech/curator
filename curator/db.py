@@ -147,6 +147,13 @@ CREATE TABLE IF NOT EXISTS catalogue (
     slug TEXT NOT NULL,
     PRIMARY KEY (library, id)
 );
+-- Each title's IMDb id as a service last gave it. Never cleared, so a deleted title still links.
+CREATE TABLE IF NOT EXISTS links (
+    library TEXT NOT NULL,
+    id INTEGER NOT NULL,
+    imdb_id TEXT NOT NULL,
+    PRIMARY KEY (library, id)
+);
 """
 
 

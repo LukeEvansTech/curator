@@ -1,10 +1,15 @@
 {# One title on This week. `v` is the library's view, `item` the entry, `section` its list. #}
+{% from "_bits.html" import poster, facts_row %}
 {% set st = card_state(v, item, section) %}
+{% set out = imdb_link(v.imdb.get(item.id, ''), item.title, item.year) %}
 <li class="card" id="{{ v.library }}-{{ item.id }}">
-  <h3><a class="t" href="/title/{{ v.library }}/{{ item.id }}">{{ item.title }}</a>{% if item.year %} <span class="year">({{ item.year }})</span>{% endif %}</h3>
-  {% set line = item | facts %}{% if line %}<p class="line">{{ line }}</p>{% endif %}
-  {% if section == 'later' and item.due_at %}<p class="line">Due {{ item.due_at | day }}</p>{% endif %}
-  {% if item.reason %}<p class="reason">{% if byline.get(item.by) %}<span class="who">{{ byline.get(item.by) }}:</span> {% endif %}{{ item.reason }}</p>{% endif %}
+  {{ poster(v.library, item.id, out) }}
+  <div class="card-body">
+    <h3><a class="t" href="/title/{{ v.library }}/{{ item.id }}">{{ item.title }}</a>{% if item.year %} <span class="year">({{ item.year }})</span>{% endif %}</h3>
+    {{ facts_row(item, out, item.title) }}
+    {% if section == 'later' and item.due_at %}<p class="line">Due {{ item.due_at | day }}</p>{% endif %}
+  </div>
+  {% if item.reason %}<p class="reason">{% if byline.get(item.by) %}<span class="who">{{ byline.get(item.by) }}</span>{% endif %}{{ item.reason }}</p>{% endif %}
   {% if item.overview %}<details class="syn"><summary>Synopsis</summary><p>{{ item.overview }}</p></details>{% endif %}
   {% if st.note %}<p class="state {{ st.tone }}">{{ st.note }}</p>{% endif %}
   {% if st.buttons %}

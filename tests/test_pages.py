@@ -44,10 +44,10 @@ def test_this_week_shows_every_section(env):
     load(client)
     page = client.get("/").text
     assert "Going on Sunday 22 November" in page and "Would go on Sunday 22 November" in page
-    assert "Mega Gator vs. Lava Bear" in page and "Judge:</span> Straight-to-video" in page
-    assert "You:</span> Marked for deletion by a person." in page
+    assert "Mega Gator vs. Lava Bear" in page and "Judge</span>Straight-to-video" in page
+    assert "You</span>Marked for deletion by a person." in page
     assert "requested by housemate" in page
-    assert "Needs you" in page and "Could not be assessed:</span>" in page
+    assert "Needs you" in page and "Could not be assessed</span>" in page
     assert "Later" in page and "Being kept" in page and "Deleted last run" in page
     assert "Dry run." in page and "The last run was blocked" in page
     # buttons offered only as each entry allows

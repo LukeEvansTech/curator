@@ -34,6 +34,7 @@ next weekly run    ─▶ the engine's plan reads the tags
 | `/allow`                        | Protected titles and why (rating bar, `keep`, `cleanup-keep`), searchable             |
 | `/deleted`                      | What went, largest first, and what a restore needs                                    |
 | `/ops`                          | Last document per library, refused publishes, tags in the services, refresh           |
+| `/poster/{library}/{id}`        | A title's poster, fetched from its service once and kept; `?w=500` is the large one   |
 | `/health`, `/metrics`           | Liveness; `curator_last_document_timestamp_seconds{library}` and more                 |
 
 ## Run it
@@ -46,7 +47,9 @@ CURATOR_DATA=data .venv/bin/python -m curator import tv tests/data/tv-v2.json
 CURATOR_DATA=data .venv/bin/python -m curator serve   # http://localhost:8080
 ```
 
-Without Radarr and Sonarr configured the pages render and say the live tags could not be read.
+Every title shows its poster and links to its IMDb page; both open IMDb in a new tab. Without
+Radarr and Sonarr configured the pages render, say the live tags could not be read, and show a
+placeholder for every poster.
 
 Docker: `docker build -t curator .` then
 `docker run --read-only -v curator:/data -p 8080:8080 curator`. The image runs as uid 65532.

@@ -1,0 +1,11 @@
+{# The poster links to IMDb, as the IMDb fact beside it does, so it is kept out of the tab order. #}
+{% macro poster(library, item_id, href, wide=false) %}
+<a class="poster" href="{{ href }}" target="_blank" rel="noopener noreferrer" tabindex="-1" aria-hidden="true"><img src="/poster/{{ library }}/{{ item_id }}{{ '?w=500' if wide }}" alt="" width="{{ 500 if wide else 250 }}" height="{{ 750 if wide else 375 }}" loading="lazy" decoding="async"></a>
+{% endmacro %}
+
+{# Size, plays and origin on one line; under it the rating, which is the link to IMDb. #}
+{% macro facts_row(item, href, title) %}
+{% set plain = item | fact_list %}{% set rating = item | imdb_fact %}
+{% if plain %}<p class="facts-row">{% for kind, text in plain %}<span class="fact {{ kind }}">{{ text }}</span>{% endfor %}</p>{% endif %}
+<p class="facts-row"><a class="fact imdb" href="{{ href }}" target="_blank" rel="noopener noreferrer" aria-label="{{ title }} on IMDb{% if rating != 'IMDb' %}, {{ rating | replace('IMDb ', '') }}{% endif %}">{{ rating }}</a></p>
+{% endmacro %}

@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Allow list · curator{% endblock %}
+{% from "_bits.html" import poster, facts_row %}
 {% block main %}
 <h1>Allow list</h1>
 <p class="meta">Every title the cleanup will not touch, as {{ service.film }} and {{ service.tv }} hold it.
@@ -23,11 +24,15 @@
 {% if rows %}
 <ul class="rows">
   {% for r in rows %}
-  <li>
+  {% set out = imdb_link(r.imdb_id, r.title, r.year) %}
+  <li class="pictured">
+    {{ poster(r.library, r.id, out) }}
+    <div>
     <div class="top-line"><a href="/title/{{ r.library }}/{{ r.id }}">{{ r.title }}{% if r.year %} ({{ r.year }}){% endif %}</a><span class="meta">{{ names[r.library] }}</span></div>
-    <p class="sub">{{ r.size_gb | gb }}{% if r.imdb_score %} · IMDb {{ '%.1f' | format(r.imdb_score) }}{% if r.imdb_votes %} on {{ '{:,}'.format(r.imdb_votes) }} votes{% endif %}{% endif %}</p>
+    {{ facts_row(r, out, r.title) }}
     {% if r.why %}<ul class="chips">{% for w in r.why %}<li>{{ whys[w] }}</li>{% endfor %}</ul>{% endif %}
-    <form class="stack" method="post" action="/allow/act">
+    </div>
+    <form method="post" action="/allow/act">
       <input type="hidden" name="library" value="{{ r.library }}">
       <input type="hidden" name="id" value="{{ r.id }}">
       <input type="hidden" name="back" value="{{ back }}">
