@@ -3,7 +3,7 @@
 {% block main %}
 {# Films run long on a phone, so the way to the other library stays in reach. #}
 <nav class="jump" aria-label="Libraries">
-  {% for v in views %}{% set n = v.doc.going | length if v.doc else 0 %}<a class="jump-link{{ '' if n else ' none' }}" href="#{{ v.library }}" aria-label="{{ names[v.library] }}, {{ n }} {{ 'going' if v.doc and v.doc.mode == 'act' else 'would go' }}">{{ names[v.library] }}<b class="jump-n">{{ n }}</b></a>{% endfor %}
+  {% for v in views %}{% set n = v.going | length if v.doc else 0 %}<a class="jump-link{{ '' if n else ' none' }}" href="#{{ v.library }}" aria-label="{{ names[v.library] }}, {{ n }} {{ 'going' if v.doc and v.doc.mode == 'act' else 'would go' }}">{{ names[v.library] }}<b class="jump-n">{{ n }}</b></a>{% endfor %}
   <a class="jump-link jump-go{{ '' if left else ' none' }}" href="/review" aria-label="Go through them one at a time, {{ left }} left">Review<b class="jump-n">{{ left }}</b></a>
 </nav>
 {% for v in views %}
@@ -16,11 +16,11 @@
   {% set rehearsal = doc.mode != 'act' %}
   <p class="meta">Published {{ doc.generated_at | when }} · <a href="/run/{{ v.library }}/{{ v.run_key | urlencode }}">this run</a></p>
   <div class="summary">
-    <div class="lead{{ '' if doc.going else ' clear' }}">
-      <b class="count">{{ doc.going | length }}</b>
+    <div class="lead{{ '' if v.going else ' clear' }}">
+      <b class="count">{{ v.going | length }}</b>
       <div>
         <p class="what">{{ 'would go' if rehearsal else 'going' }} on {{ doc.next_run_at | day }}</p>
-        <p class="meta">{{ doc.going | total_gb }} · at most {{ doc.cap }} a run</p>
+        <p class="meta">{{ v.going | total_gb }} · at most {{ doc.cap }} a run{% set saved = (doc.going | length) - (v.going | length) %}{% if saved %} · {{ saved }} kept by you{% endif %}</p>
       </div>
     </div>
     <ul class="stats">
@@ -37,7 +37,7 @@
     {% if v.live is none %}<div class="banner bad"><b>The live tags could not be read.</b> {{ v.error }}. The buttons may not show a tag set elsewhere.</div>{% endif %}
   </div>{% endif %}
 
-  <h3 class="rule-head">{{ 'Would go' if rehearsal else 'Going' }} on {{ doc.next_run_at | day }} <span class="n">{{ doc.going | length }}</span></h3>
+  <h3 class="rule-head">{{ 'Would go' if rehearsal else 'Going' }} on {{ doc.next_run_at | day }} <span class="n">{{ v.going | length }}</span></h3>
   <p class="hint">Leave a title alone and the next run deletes it. Keep protects it for good. <a href="/review">Go through them one at a time</a>.</p>
   {% if doc.going %}<ul class="cards">{% for item in doc.going %}{% set section = 'going' %}{% include "_card.html" %}{% endfor %}</ul>
   {% else %}<div class="empty"><p>Nothing is due at the next run.</p></div>{% endif %}

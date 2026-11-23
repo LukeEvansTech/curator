@@ -358,3 +358,20 @@ def test_hostile_text_is_escaped(env):
     page = client.get("/review?last=film-101").text
     assert "<script>alert(1)" not in page and "<img src=x" not in page
     assert page.count("&lt;script&gt;") >= 4  # the answer said back, then the next title's text
+
+
+def headline(client) -> tuple[int, str]:
+    """The first library's big count on This week, and the line under it."""
+    lead = client.get("/").text.split('<b class="count">')[1]
+    return int(lead.split("</b>")[0]), lead.split('<p class="meta">')[1].split("</p>")[0]
+
+
+def test_a_kept_title_leaves_the_headline_count(env):
+    _, client, _, _ = setup(env)
+    before, line = headline(client)
+    assert before and "kept by you" not in line
+    assert press(client, "keep").status_code == 303
+    after, line = headline(client)
+    assert after == before - 1 and "1 kept by you" in line
+    assert press(client, "pass").status_code == 303  # letting one go changes nothing
+    assert headline(client)[0] == after
