@@ -30,7 +30,7 @@
 <h1>Allow list</h1>
 <p class="meta">Every title the cleanup will not touch, as {{ service.film }} and {{ service.tv }} hold it.
 {% for k, r in refreshed.items() %}{{ names[k] }} read {{ r.at | ago if r.at else 'never' }}{% if r and not r.ok %} (<span class="bad-text">failed: {{ r.message }}</span>){% endif %}{{ '; ' if not loop.last else '.' }}{% endfor %}</p>
-{% for k in unread %}<div class="banner bad"><b>{{ service[k] }} could not be read just now.</b> {{ names[k] }} show their tags as of the last full read, which may be out of date.</div>{% endfor %}
+{% if unread %}<div class="notices">{% for k in unread %}<div class="banner bad"><b>{{ service[k] }} could not be read just now.</b> {{ names[k] }} show their tags as of the last full read, which may be out of date.</div>{% endfor %}</div>{% endif %}
 <nav class="switch" aria-label="Allow list">
   <a class="switch-link" href="/allow" {% if not adding %}aria-current="page"{% endif %}>On the list</a>
   <a class="switch-link" href="/allow?show=all" {% if adding %}aria-current="page"{% endif %}>Add a title</a>

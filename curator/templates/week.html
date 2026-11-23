@@ -30,10 +30,12 @@
       <li><b>{{ doc.deleted | length }}</b>{{ 'would have gone' if rehearsal else 'deleted' }} last run</li>
     </ul>
   </div>
-  {% if rehearsal %}<div class="banner"><b>Dry run.</b> Nothing is deleted yet; the buttons still set real tags.</div>{% endif %}
-  {% if v.stale %}<div class="banner bad"><b>This list is old.</b> No document has arrived since {{ doc.generated_at | when }}. Check the run on Ops.</div>{% endif %}
-  {% if doc.blocks %}<div class="banner"><b>The last run was blocked, so it deleted nothing.</b><ul>{% for b in doc.blocks %}<li>{{ b }}</li>{% endfor %}</ul></div>{% endif %}
-  {% if v.live is none %}<div class="banner bad"><b>The live tags could not be read.</b> {{ v.error }}. The buttons may not show a tag set elsewhere.</div>{% endif %}
+  {% if rehearsal or v.stale or doc.blocks or v.live is none %}<div class="notices">
+    {% if rehearsal %}<div class="banner"><b>Dry run.</b> Nothing is deleted yet; the buttons still set real tags.</div>{% endif %}
+    {% if v.stale %}<div class="banner bad"><b>This list is old.</b> No document has arrived since {{ doc.generated_at | when }}. Check the run on Ops.</div>{% endif %}
+    {% if doc.blocks %}<div class="banner"><b>The last run was blocked, so it deleted nothing.</b><ul>{% for b in doc.blocks %}<li>{{ b }}</li>{% endfor %}</ul></div>{% endif %}
+    {% if v.live is none %}<div class="banner bad"><b>The live tags could not be read.</b> {{ v.error }}. The buttons may not show a tag set elsewhere.</div>{% endif %}
+  </div>{% endif %}
 
   <h3 class="rule-head">{{ 'Would go' if rehearsal else 'Going' }} on {{ doc.next_run_at | day }} <span class="n">{{ doc.going | length }}</span></h3>
   <p class="hint">Leave a title alone and the next run deletes it. Keep protects it for good. <a href="/review">Go through them one at a time</a>.</p>

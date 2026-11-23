@@ -59,6 +59,9 @@ numbers line up. Scripts the bundled subsets lack fall back to the system face.
   button, because there is nothing for one to do. Add a title searches the whole library and
   offers Add only where it would change something.
 - **Facts**: a grid of uppercase label over value, inside one surface.
+- **Notices**: a note carries an icon, info in grey or a warning triangle in amber on an amber
+  wash. Several notes about one list sit in one surface with hairlines between them, so a list
+  with four problems shows one block, not four boxes.
 
 ## Rules
 
@@ -68,6 +71,8 @@ numbers line up. Scripts the bundled subsets lack fall back to the system face.
   White fill is kept for the one way into the review.
 - Motion is hover and press only, 90 to 240ms, and off under reduced motion.
 - Empty states are a dashed box with one sentence and the next step.
-- Icons are Lucide (ISC), drawn as CSS masks so they take the text colour.
-- The app icon is the mark beside the name: a red rounded square on black. The manifest lets
-  a phone add the pages to its home screen and open them without browser chrome.
+- Icons are Lucide (ISC), the mark excepted, drawn as CSS masks so they take the text colour.
+- The mark is a red poster with its lower corner cut away and set apart: a title taken out of
+  the library. It sits beside the name (`mark.svg`) and is the app icon on black (`icon.svg`, the
+  PNGs drawn from it). The manifest lets a phone add the pages to its home screen and open them
+  without browser chrome.
