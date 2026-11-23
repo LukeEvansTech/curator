@@ -102,6 +102,15 @@ def standing(view: dict, item: dict, section: str) -> str:
     return stands(view["marks"].get(item_id), section, item, view["doc_id"]) or "wait"
 
 
+def still_going(view: dict) -> list[dict]:
+    """The going list less what a person has kept since the document was published.
+
+    The document is a week's snapshot; a title kept from it is not deleted, so the
+    headline count and size leave it out.
+    """
+    return [i for i in view["doc"].get("going") or [] if standing(view, i, "going") != "keep"]
+
+
 def queue(views: dict[str, dict], scope: str) -> list[dict]:
     """Every title a list holds, films first, in the order This week shows them."""
     out = []

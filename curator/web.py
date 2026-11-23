@@ -433,6 +433,7 @@ def create_app(
             elif tap:
                 mine[item_id] = tap["tag"]
         view["mine"], view["pending"] = mine, pending
+        view["going"] = review.still_going(view)
         return view
 
     def card_state(view: dict, item: dict, section: str) -> dict:
