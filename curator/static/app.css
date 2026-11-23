@@ -141,10 +141,10 @@ a:hover {
 
 .mark::before {
   content: "";
-  width: 10px;
-  height: 10px;
-  border-radius: 3px;
-  background: var(--go-fill);
+  flex: none;
+  width: 15px;
+  height: 21px;
+  background: url("/static/mark.svg") center / contain no-repeat;
 }
 
 .mark span {
@@ -512,24 +512,58 @@ details[open] > summary.rule-head::after {
 
 /* ---------- banners and empty states ---------- */
 .banner {
+  position: relative;
   margin: 12px 0;
-  padding: 12px 14px;
+  padding: 12px 14px 12px 42px;
   border: 1px solid var(--line);
-  border-left: 3px solid var(--line-strong);
   border-radius: var(--radius-s);
   background: var(--surface);
   font-size: 15px;
 }
 
+.banner::before {
+  content: "";
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  width: 18px;
+  height: 18px;
+  background: var(--text-2);
+  mask: url("/static/icons/info.svg") center / contain no-repeat;
+}
+
 .banner.bad {
   border-color: rgb(251 191 36 / 35%);
-  border-left-color: var(--warn);
   background: var(--warn-wash);
+}
+
+.banner.bad::before {
+  background: var(--warn);
+  mask-image: url("/static/icons/warn.svg");
 }
 
 .banner ul {
   margin: 6px 0 0;
   padding-left: 18px;
+}
+
+/* several notes about one list read as one block, not a stack of boxes */
+.notices {
+  margin: 12px 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-s);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.notices > .banner {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+.notices > .banner + .banner {
+  border-top: 1px solid var(--line);
 }
 
 .empty {

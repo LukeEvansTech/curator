@@ -20,7 +20,7 @@
   <p class="so-far">{% if total %}<b>{{ answered }}</b> of {{ total }} done{% if put_off %} · {{ put_off }} put off{% endif %}{% if sent %} · {{ sent }} not shown yet{% endif %}{% else %}{{ scope_name }}{% endif %}</p>
 </div>
 {% if total %}<progress class="meter" max="{{ total }}" value="{{ answered }}" aria-label="{{ scope_name }}: answered">{{ answered }} of {{ total }}</progress>{% endif %}
-{% for lib in unread %}<div class="banner bad"><b>The live tags for {{ names[lib] }} could not be read.</b> A title tagged elsewhere may be asked about here.</div>{% endfor %}
+{% if unread %}<div class="notices">{% for lib in unread %}<div class="banner bad"><b>The live tags for {{ names[lib] }} could not be read.</b> A title tagged elsewhere may be asked about here.</div>{% endfor %}</div>{% endif %}
 
 {% if now %}
 {% set item = now.item %}{% set v = now.view %}
