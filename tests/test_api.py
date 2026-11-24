@@ -159,6 +159,9 @@ def test_a_press_is_refused_as_the_page_refuses_it(env):
     assert act(client, 101, "burn").status_code == 400
     assert client.post("/api/v1/act", json={"library": "film", "id": "101"}).status_code == 400
     assert client.post("/api/v1/act", json={"library": "film", "id": True}).status_code == 400
+    for body in (b"", b"{not json", b"[1, 2]", b'"keep"'):
+        r = client.post("/api/v1/act", content=body, headers={"content-type": "application/json"})
+        assert r.status_code == 400 and r.json()["ok"] is False, body
     assert film.writes() == []
     # a page on another site cannot press through a browser
     token = week(client)["token"]

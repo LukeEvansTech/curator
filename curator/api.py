@@ -8,10 +8,12 @@ script runs on the pages, so nothing on the site reads this API.
 
 from __future__ import annotations
 
+import json
 from typing import Any, Callable
 
-from fastapi import Body, FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from starlette.concurrency import run_in_threadpool
 
 from . import buttons, lists, review
 from .arr import ArrError, TagClient
@@ -162,8 +164,17 @@ def attach(  # pylint: disable=too-many-arguments,too-many-positional-arguments,
         }
 
     @app.post("/api/v1/act")
-    def api_act(press: dict = Body(...)) -> Any:
+    async def api_act(request: Request) -> Any:
         """One press on a title of the latest list. Answers with its library as it now stands."""
+        try:  # read by hand, so a body that is not a press is refused in the API's own words
+            press = json.loads(await request.body())
+        except ValueError:
+            press = None
+        if not isinstance(press, dict):
+            return refused(400, "That request is not a press.")
+        return await run_in_threadpool(act, press)
+
+    def act(press: dict) -> Any:
         library, item_id = press.get("library"), press.get("id")
         action, token = press.get("action"), press.get("token")
         if library not in LIBRARIES:
