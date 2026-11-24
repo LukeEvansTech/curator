@@ -111,6 +111,9 @@ def test_review_lists_a_scope_in_page_order_with_its_tally(env):
     assert body["total"] == len(body["entries"]) and body["answered"] == 0
     assert {e["section"] for e in body["entries"]} <= {"going", "needs_you"}
     assert set(body["tokens"]) == {"film", "tv"}
+    assert body["rehearsal"] == ["tv"]  # the TV sample is a dry run, and the list says so
+    assert any(n["lead"] == "Dry run." for n in body["notices"]["tv"])
+    assert all(n["lead"] != "Dry run." for n in body["notices"]["film"])
     act(client, 101, "keep")
     body = client.get("/api/v1/review").json()
     assert body["keep"] == 1 and body["answered"] == 1
@@ -140,7 +143,9 @@ def test_deleted_matches_the_page_and_says_when_it_is_cut(env):
         )
     body = client.get("/api/v1/deleted").json()
     assert body["truncated"] is True and len(body["rows"]) == 100 and body["pages"] >= 2
-    assert client.get("/api/v1/deleted?page=2").json()["page"] == 2
+    last = client.get("/api/v1/deleted?page=2").json()
+    assert last["page"] == 2 and last["truncated"] is False  # nothing after the last page
+    assert client.get("/api/v1/deleted?page=9").json()["page"] == 2
 
 
 def test_a_press_is_refused_as_the_page_refuses_it(env):

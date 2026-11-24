@@ -155,6 +155,9 @@ def attach(  # pylint: disable=too-many-arguments,too-many-positional-arguments,
             **review.tally(entries),
             "tokens": {library: view.get("token", "") for library, view in seen.items()},
             "unread": [lib for lib, view in seen.items() if view["doc"] and view["live"] is None],
+            # A dry run deletes nothing, and a list may be old or unread: said here as on the page.
+            "rehearsal": [lib for lib, v in seen.items() if v["doc"] and v["doc"]["mode"] != "act"],
+            "notices": {lib: lists.notices(view, when) for lib, view in seen.items()},
             "entries": [item(seen[e["library"]], e["item"], e["section"]) for e in entries],
         }
 
@@ -221,7 +224,7 @@ def attach(  # pylint: disable=too-many-arguments,too-many-positional-arguments,
             "page": found["page_no"],
             "pages": found["pages"],
             "count": found["count"],
-            "truncated": found["pages"] > 1,
+            "truncated": found["page_no"] < found["pages"],
             "deleted_count": found["deleted_n"],
             "total_size": gb(found["total"]),
             "recycle_days": found["recycle_days"],
