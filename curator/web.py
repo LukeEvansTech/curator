@@ -28,7 +28,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.concurrency import run_in_threadpool
 
-from . import allow, buttons, ingest, review
+from . import allow, api, buttons, ingest, lists, review
 from .arr import (
     POSTER_WIDTHS,
     TAG_DELETE,
@@ -239,6 +239,7 @@ def create_app(
         byline=BYLINE,
         cost=cost,
         imdb_link=imdb_link,
+        notices=lambda view: lists.notices(view, when),
     )
 
     def page(request: Request, name: str, status: int = 200, **ctx) -> HTMLResponse:
@@ -491,6 +492,8 @@ def create_app(
         return out
 
     tpl.env.globals["card_state"] = card_state
+    shown = {**tpl.env.filters, **tpl.env.globals, "imdb_ids": imdb_ids}
+    api.attach(app, s, db, clients, week_view, shown, live_cache)
 
     def live_or_none(library: str) -> dict[str, frozenset[int]] | None:
         """The decision tags read now, or None when the service is unset or could not be read."""
@@ -525,9 +528,7 @@ def create_app(
         views = {lib: week_view(lib, links=False) for lib in LIBRARIES}
         entries = review.queue(views, scope)
         waiting = [e for e in entries if e["stand"] == "wait"]
-        tally = {k: sum(e["stand"] == k for e in entries) for k in ("keep", "delete", "pass")}
-        put_off = sum(e["stand"] == "later" for e in entries)
-        sent = sum(e["stand"] == "sent" for e in entries)
+        tally = review.tally(entries)
         now = waiting[0] if waiting else None
         if now:
             view = views[now["library"]]
@@ -556,10 +557,10 @@ def create_app(
             scope=scope,
             scope_name=review.SCOPE_NAMES[scope],
             any_doc=any(v["doc"] for v in views.values()),
-            total=len(entries),
-            answered=len(entries) - len(waiting) - put_off - sent,
-            put_off=put_off,
-            sent=sent,
+            total=tally["total"],
+            answered=tally["answered"],
+            put_off=tally["put_off"],
+            sent=tally["sent"],
             tally=tally,
             now=now,
             ahead=waiting[1] if len(waiting) > 1 else None,
@@ -596,21 +597,9 @@ def create_app(
             return problem(request, 400, "That request names no title.")
         item_id, key = int(id), s.key(library)
         try:
-            if action in review.MARKS:
-                review.mark(db, key, library, item_id, action, token[:200])
-            elif action == "unmark":
-                review.unmark(db, key, library, item_id, token[:200])
-            else:
-                buttons.week(db, clients[library], key, library, item_id, action, token[:200])
+            review.press(db, clients[library], key, library, item_id, action, token[:200])
         except buttons.Refused as exc:
-            # A second press of the same button finds the first already done: carry on.
-            tap = buttons.open_tap(db, library, item_id)
-            wanted = buttons.TAG_FOR.get(action)
-            # (a press still waiting on the service is not done, and says so)
-            landed = bool(tap and tap["confirmed"] and tap["tag"] == wanted)
-            repeat = (tap is None) if action == "undo" else landed
-            if exc.status != 409 or not repeat:
-                return problem(request, exc.status, exc.message, back=back)
+            return problem(request, exc.status, exc.message, back=back)
         except ArrError as exc:
             return problem(request, 502, f"Not done: {exc}", back=back)
         finally:
@@ -902,45 +891,11 @@ def create_app(
     @app.get("/deleted", response_class=HTMLResponse)
     def deleted(request: Request, library: str = "", page_no: int = Query(1, alias="page")):
         lib = library if library in LIBRARIES else ""
-        now = dt.datetime.now(dt.timezone.utc)
-        where = "WHERE (? = '' OR a.library = ?)"
-        count = db.count(f"SELECT count(*) FROM actions a {where}", lib, lib)  # nosec B608
-        pages = max(1, -(-count // DELETED_PAGE))
-        page_no = min(max(page_no, 1), pages)
-        rows = []
-        for r in db.all(
-            "SELECT a.*, c.slug FROM actions a LEFT JOIN catalogue c"  # nosec B608
-            f" ON c.library = a.library AND c.id = a.item_id {where}"
-            " ORDER BY a.size_gb DESC, a.at DESC, a.id DESC LIMIT ? OFFSET ?",
-            lib,
-            lib,
-            DELETED_PAGE,
-            (page_no - 1) * DELETED_PAGE,
-        ):
-            row = dict(r)
-            at = moment(row["at"])
-            until = at + dt.timedelta(days=s.recycle_days) if at else None
-            row["bin_until"] = until.isoformat() if until else ""
-            row["in_bin"] = bool(until and until > now and row["kind"] == "deleted")
-            rows.append(row)
-        sums = db.one(
-            "SELECT coalesce(sum(size_gb), 0) AS gb, count(*) AS n FROM actions a"  # nosec B608
-            f" {where} AND a.kind = 'deleted'",
-            lib,
-            lib,
-        )
         return page(
             request,
             "deleted.html",
             nav="deleted",
-            rows=rows,
-            library=lib,
-            total=sums["gb"] if sums else 0,
-            deleted_n=sums["n"] if sums else 0,
-            count=count,
-            page_no=page_no,
-            pages=pages,
-            recycle_days=s.recycle_days,
+            **lists.deleted(db, lib, page_no, DELETED_PAGE, s.recycle_days),
             links={lib_: imdb_ids(lib_) for lib_ in LIBRARIES},
         )
 
