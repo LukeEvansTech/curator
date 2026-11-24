@@ -159,6 +159,9 @@ def test_a_press_is_refused_as_the_page_refuses_it(env):
     assert act(client, 101, "burn").status_code == 400
     assert client.post("/api/v1/act", json={"library": "film", "id": "101"}).status_code == 400
     assert client.post("/api/v1/act", json={"library": "film", "id": True}).status_code == 400
+    big = client.post("/api/v1/act", content=b" " * 5000 + b"{}")
+    assert big.status_code == 413 and big.json()["ok"] is False
+    assert act(client, 101, "keep", token="\ud800").status_code == 400  # not text a token can be
     for body in (b"", b"{not json", b"[1, 2]", b'"keep"'):
         r = client.post("/api/v1/act", content=body, headers={"content-type": "application/json"})
         assert r.status_code == 400 and r.json()["ok"] is False, body

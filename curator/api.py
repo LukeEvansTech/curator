@@ -23,6 +23,7 @@ from .document import LIBRARIES
 
 DELETED_PAGE = 100  # rows a page of the deleted list holds
 ACTIONS = ("keep", "delete", "undo", "unmark", *review.MARKS)
+MAX_PRESS_BYTES = 4096  # a press is four short fields
 SECTIONS = ("going", "needs_you", "later")  # the lists This week shows on a phone
 
 
@@ -166,8 +167,15 @@ def attach(  # pylint: disable=too-many-arguments,too-many-positional-arguments,
     @app.post("/api/v1/act")
     async def api_act(request: Request) -> Any:
         """One press on a title of the latest list. Answers with its library as it now stands."""
-        try:  # read by hand, so a body that is not a press is refused in the API's own words
-            press = json.loads(await request.body())
+        # Read by hand: a body that is too large or is not a press is refused in the API's own
+        # words, and nothing is parsed before its size is known.
+        raw = b""
+        async for chunk in request.stream():
+            raw += chunk
+            if len(raw) > MAX_PRESS_BYTES:
+                return refused(413, "That request is too large to be a press.")
+        try:
+            press = json.loads(raw)
         except ValueError:
             press = None
         if not isinstance(press, dict):
@@ -181,7 +189,7 @@ def attach(  # pylint: disable=too-many-arguments,too-many-positional-arguments,
             return refused(400, "That request names a library this app does not have.")
         if isinstance(item_id, bool) or not isinstance(item_id, int) or not 0 < item_id < 10**15:
             return refused(400, "That request names no title.")
-        if action not in ACTIONS or not isinstance(token, str):
+        if action not in ACTIONS or not isinstance(token, str) or not token.isascii():
             return refused(400, "That button does not exist.")
         try:
             review.press(
