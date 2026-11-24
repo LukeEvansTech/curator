@@ -38,6 +38,24 @@ next weekly run    ─▶ the engine's plan reads the tags
 | `/poster/{library}/{id}`        | A title's poster, fetched from its service once and kept; `?w=500` is the large one   |
 | `/health`, `/metrics`           | Liveness; `curator_last_document_timestamp_seconds{library}` and more                 |
 
+## API
+
+JSON for the phone app, under `/api/v1`. Each endpoint is drawn from the view its page is drawn
+from and worded by the same formatters, so the page and the phone say the same thing. There is no
+login, as on the pages. `GLOSSARY.md` defines the words used.
+
+| Endpoint                              | Page       | Gives                                                                           |
+| ------------------------------------- | ---------- | ------------------------------------------------------------------------------- |
+| `GET /api/v1/week`                    | `/`        | Per library: headline, notices, `token`, and the Going, Needs you, Later lists  |
+| `GET /api/v1/review?scope=due`        | `/review`  | One list in the order it is asked, its tally, and what each other list has left |
+| `POST /api/v1/act`                    | `/review`  | One press; answers with the title's library as it now stands                    |
+| `GET /api/v1/deleted?library=&page=1` | `/deleted` | A page of 100, largest first, the totals, and `truncated` when more remain      |
+
+A press is JSON: `{"library": "film", "id": 101, "action": "keep", "token": "<that library's token>"}`.
+`action` is one a title's `buttons` offers: `keep`, `delete`, `undo`, `pass`, `later` or `unmark`.
+A refusal answers `{"ok": false, "error": "..."}` with the status the page would give. Paths in a
+reply (`poster`, `page`) are relative to the server.
+
 ## Run it
 
 ```sh

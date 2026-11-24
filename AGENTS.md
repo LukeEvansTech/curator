@@ -18,6 +18,10 @@ it; this file holds what the code does not say.
   kept in `reviews`: a pass stands while the list carries the proposal it answered (same
   intent, same `proposed_at`), a put-off for the document it was made on. A tag added from any
   page clears the title's mark.
+- API: `api.py` serves `/api/v1` to the phone app. It builds nothing of its own: an endpoint
+  takes the view its page takes (`week_view`, `review.queue`, `lists.deleted`) and the pages'
+  formatters, and a press goes through `review.press`. Change what a page shows in that shared
+  code, never in `api.py` alone. A field once released is kept; add, do not rename.
 - Posters: `/poster/{library}/{id}` fetches a title's poster from its service once and keeps it
   under `posters/` in the data directory, so a title that has left the library still shows one.
   The IMDb ID comes from the library read into `links`, which is never cleared for the same

@@ -12,7 +12,7 @@ from __future__ import annotations
 from typing import Callable
 
 from . import buttons
-from .arr import TAG_DELETE, TAG_KEEP
+from .arr import TAG_DELETE, TAG_KEEP, TagClient
 from .db import DB
 from .ingest import LOCK
 
@@ -180,6 +180,40 @@ def mark(db: DB, key: str, library: str, item_id: int, kind: str, token: str) ->
             item["proposed_at"],
             doc_id,
         )
+
+
+def press(
+    db: DB, client: TagClient, key: str, library: str, item_id: int, action: str, token: str
+) -> None:
+    """One answer for a title on the latest list: a mark, its undoing, or one of This week's own
+    presses. A second press of the same button finds the first already done and passes."""
+    try:
+        if action in MARKS:
+            mark(db, key, library, item_id, action, token)
+        elif action == "unmark":
+            unmark(db, key, library, item_id, token)
+        else:
+            buttons.week(db, client, key, library, item_id, action, token)
+    except buttons.Refused as exc:
+        tap = buttons.open_tap(db, library, item_id)
+        wanted = buttons.TAG_FOR.get(action)
+        # (a press still waiting on the service is not done, and says so)
+        landed = bool(tap and tap["confirmed"] and tap["tag"] == wanted)
+        repeat = (tap is None) if action == "undo" else landed
+        if exc.status != 409 or not repeat:
+            raise
+
+
+def tally(entries: list[dict]) -> dict[str, int]:
+    """How a list stands: its size, the answers by kind, and what is put off or sent."""
+    out = {k: sum(e["stand"] == k for e in entries) for k in ("keep", "delete", "pass")}
+    out.update(
+        total=len(entries),
+        put_off=sum(e["stand"] == "later" for e in entries),
+        sent=sum(e["stand"] == "sent" for e in entries),
+    )
+    out["answered"] = out["keep"] + out["delete"] + out["pass"]
+    return out
 
 
 def unmark(db: DB, key: str, library: str, item_id: int, token: str) -> None:
