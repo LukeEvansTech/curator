@@ -53,7 +53,8 @@ login, as on the pages. `GLOSSARY.md` defines the words used.
 
 A press is JSON: `{"library": "film", "id": 101, "action": "keep", "token": "<that library's token>"}`.
 `action` is one a title's `buttons` offers: `keep`, `delete`, `undo`, `pass`, `later` or `unmark`.
-A refusal answers `{"ok": false, "error": "..."}` with the status the page would give. Paths in a
+A refusal answers `{"ok": false, "error": "..."}` with the status the page would give. A press a browser
+sends from another site's page never reaches the API: it is refused with 403 in plain text. Paths in a
 reply (`poster`, `page`) are relative to the server.
 
 ## Run it
